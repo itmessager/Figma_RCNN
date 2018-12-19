@@ -1,0 +1,26 @@
+# IDE files
+.idea
+
+# Result and models
+results*
+models
+output
+*.pth
+*.pb
+train_log*
+
+# Compilation related
+**/__pycache__
+*.pyc
+*.c
+*.o
+*.so
+
+# My test code
+text.py
+test.py
+logfile
+logdir*
+transport_person_to_face_json.py
+transport_person_to_face_json_new
+

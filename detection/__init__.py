@@ -1,0 +1,1 @@
+from detection.core.s3fd_face_detector import S3fdFaceDetector

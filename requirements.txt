@@ -1,0 +1,22 @@
+pillow-simd
+scipy
+pandas
+numpy
+torch
+#torchvision # Comment it to avoid unnecessary transitive dependency on pillow, assuming torchvision is already installed in docker
+tqdm
+pretrainedmodels # Pytorch models
+pytorch-ignite
+tensorboardX
+tensorflow-gpu
+html5lib
+ujson
+matplotlib
+opencv-python
+cython
+filterpy # for SORT tracking
+numba # For SORT tracking
+sklearn # For SORT tracking
+#pytorch2keras==0.1.4 # Model conversion
+git+https://github.com/pkdogcom/pytorch2keras.git@master # TODO: Switch back to official repo once the fix is merged
+git+https://github.com/tensorpack/tensorpack.git
