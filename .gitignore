@@ -7,7 +7,7 @@ models
 output
 *.pth
 *.pb
-train_log*
+train_log/
 
 # Compilation related
 **/__pycache__
