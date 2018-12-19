@@ -1,270 +1,157 @@
-# coding=utf-8
-import argparse
+import numpy as np
 import time
 
 import cv2
-import numpy as np
-from PIL import Image, ImageDraw
+import argparse
 
-from attributer import AllInOneAttributer
-from detection import S3fdFaceDetector
-from utils.drawing import draw_bounding_box_pil
-from gaze.gaze_estimator import estimate_gaze_from_headpose
-from tracking.sort import Sort
+from PIL import ImageDraw, Image
 
-
-# Entity class holding attributes of each person
-# TODO Separate static attributes from dynamic attributes like head pose, as they tend to follow different update logics
-from utils.viz_utils import draw_person_attributes
+from detection.core.detector_factory import get_detector
+from tracking.tracker import PersonTracker
+from attributer.attributer import AllInOneAttributer, Attributer
+from utils.viz_utils import draw_tracked_people, draw_person_attributes
 
 
-class Person1:
-    age = None
-    gender = None
-    eyeglasses = False
-    receding_hairline = False
-    smiling = False
-    last_update = 0
-    head_yaw = None
-    head_pitch = None
-    head_roll = None
-    gazing_at_screen = False
-    total_gaze_time = 0
-    total_gaze_number = 0
+def run(init_func, process_func, args, cam=None, video=None):
+    if cam:
+        # Read camera
+        cap = cv2.VideoCapture(0)
+    elif video:
+        # Read video
+        cap = cv2.VideoCapture(video)
+    else:
+        raise Exception("Either cam or video need to be specified as input")
 
-    def __init__(self, id):
-        self.id = id
-
-    def update(self, attributes):
-        age, gender, eyeglasses, receding_hairline, smiling, head_yaw, head_pitch, head_roll = attributes
-        self.age = age[0]
-        self.gender = gender
-        self.eyeglasses = eyeglasses
-        self.receding_hairline = receding_hairline
-        self.smiling = smiling
-        self.head_yaw = head_yaw
-        self.head_pitch = head_pitch
-        self.head_roll = head_roll
-
-        # Update the status of whether the person is gazing at screen and the total gazing time
-        gazing = estimate_gaze_from_headpose(head_yaw, head_pitch, head_roll)
-        if self.gazing_at_screen is True and gazing:
-            self.total_gaze_time += time.time() - self.last_update
-        if self.gazing_at_screen is False and gazing: # Switch from not gazing to gazing
-            self.total_gaze_number += 1
-        self.gazing_at_screen = gazing
-
-        self.last_update = time.time()
-
-
-class Person:
-    age = None
-    gender = None
-    eyeglasses = False
-    receding_hairline = False
-    smiling = False
-    last_update = 0
-    head_yaw = None
-    head_pitch = None
-    head_roll = None
-    gazing_at_screen = False
-    total_gaze_time = 0
-    total_gaze_number = 0
-
-    def __init__(self, id):
-        self.id = id
-        self.pool_class_list = [-1, 2, 2, 2]
-        self.attr_num = 4
-        self.pool_num = 20
-        self.pool = self.generate_pool()
-
-    def update(self, attributes):
-        age, gender, eyeglasses, receding_hairline, smiling, head_yaw, head_pitch, head_roll = attributes
-        self.pool_update(attributes[:4])
-        self.age, self.gender, self.eyeglasses, self.receding_hairline = self.weight_result()
-        self.smiling = smiling
-        self.head_yaw = head_yaw
-        self.head_pitch = head_pitch
-        self.head_roll = head_roll
-
-        # Update the status of whether the person is gazing at screen and the total gazing time
-        gazing = estimate_gaze_from_headpose(head_yaw, head_pitch, head_roll)
-        if self.gazing_at_screen is True and gazing:
-            self.total_gaze_time += time.time() - self.last_update
-        if self.gazing_at_screen is False and gazing: # Switch from not gazing to gazing
-            self.total_gaze_number += 1
-        self.gazing_at_screen = gazing
-
-        self.last_update = time.time()
-
-    def generate_pool(self):
-        # [calss_num, prob]
-        return [[] for _ in range(self.attr_num)]
-
-    def pool_update(self, value):
-        for i in range(self.attr_num):
-            if self.pool_class_list[i] == -1:
-                if len(self.pool[i]) < self.pool_num:
-                    self.pool[i].append(value[i])
-                else:
-                    self.pool[i].pop(0)
-                    self.pool[i].append(value[i])
-                pass
-            else:
-                if len(self.pool[i]) < self.pool_num:
-                    self.pool[i].append(value[i])
-                    self.pool[i] = sorted(self.pool[i], key=lambda attr: attr[1])
-                elif value[i][1] > self.pool[i][0][1]:
-                        self.pool[i].pop(0)
-                        self.pool[i].append(value[i])
-                        self.pool[i] = sorted(self.pool[i], key=lambda attr: attr[1])
-
-    def weight_result(self):
-        classification_list = []
-        for i in range(self.attr_num):
-            result_scores = []
-            if self.pool_class_list[i] == -1:
-                if len(self.pool[i]) != 0:
-                    classification_list.append(sum(self.pool[i]) / len(self.pool[i]))
-                else:
-                    classification_list.append(0)
-            else:
-                for j in range(self.pool_class_list[i]):
-                    prob = [class_attr[1] for class_attr in self.pool[i] if class_attr[0] == j]
-                    # get the max prob index, if max has more than one value, return the first one
-                    if prob:
-                        sum_num = 0
-                        #scale = 10 * (prob - 1/self.pool_class_list[i])
-                        for k in range(len(prob)):
-                            scale = (prob[k] - 1/self.pool_class_list[i]) * 10
-                            sum_num += pow(prob[k], scale)
-                        result_scores.append(sum_num)
-                    else:
-                        # if prob is null, return 0
-                        result_scores.append(0)
-                # get the attr classification
-                classification = np.uint8(result_scores.index(max(result_scores)))
-                classification_list.append(classification)
-        return tuple(classification_list)
-
-
-def main(gaze_opt, attr_opt):
-    # gaze_estimator = GazeEstimator(gaze_opt)
-    detector = S3fdFaceDetector()
-    fa = AllInOneAttributer(attr_opt)
-    tracker = Sort(max_age=3, max_trajectory_len=20)
-    update_attr_interval = 0.03 # Attribute update interval in seconds
-
-    people = {}
-
-    # Read video by opencv
-    cap = cv2.VideoCapture('/root/models/detection/output/2018-08-30-155619.webm')
+    # Initialize model
     width, height = cap.get(3), cap.get(4)
     print((width, height))
+    models = init_func(args, width, height)
 
-    cv2.namedWindow("video", cv2.WND_PROP_FULLSCREEN)
-    cv2.setWindowProperty("video", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+    # cv2.namedWindow("video", cv2.WND_PROP_FULLSCREEN)
+    # cv2.setWindowProperty("video", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
+    frame_count = 0
 
     while True:
+
         grabbed, image_bgr = cap.read()
 
         if not grabbed:
             break
-        # Some algorithms only take RGB image, and possibly only in PIL format
-        image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-        image_pil = Image.fromarray(image_rgb)
 
-        # Detect and track-by-detection
-        faces = detector.detect(image_bgr)
-        tracked_faces = tracker.update(faces)
+        frame_count += 1
+        t = time.time()
+        img_to_show = process_func(models, image_bgr)
+        print("Process frame {} takes {}s".format(frame_count, time.time() - t))
 
-        if len(tracked_faces) > 0:
-            faces = tracked_faces[..., 0:4]
-            ids = tracked_faces[..., 5]
+        if img_to_show is not None:
+            cv2.imshow('video', img_to_show)
+            k = cv2.waitKey(1)
+            if k == 27:  # Esc key to stop
+                break
 
-            # Update the list of tracked people and decide whether to update attributes
-            cur_time = time.time()
-            faces_to_detect_attr = []
-            ids_to_detect_attr = []
-            for id, f in zip(ids, faces):
-                if id not in people:
-                    people[id] = Person(id)
-                if people[id].last_update + update_attr_interval < cur_time:
-                    faces_to_detect_attr.append(f)
-                    ids_to_detect_attr.append(id)
 
-            # Detect and update attributes for faces that are necessary to be updated
-            if len(faces_to_detect_attr) > 0:
-                attributes = fa(image_pil, faces_to_detect_attr) # In RGB color space
+# generate models
+def init_detector_func(args, width, height):
+    face_detector = get_detector(args.face_model, args.face_ckpt, args.face_config)
+    obj_detector = get_detector(args.obj_model, args.obj_ckpt, args.obj_config)
+    tracker = PersonTracker()
+    attributer = Attributer(AllInOneAttributer(args))
+    return (face_detector, obj_detector, tracker, attributer)
 
-                # Update attributes
-                for id, a in zip(ids_to_detect_attr, attributes):
-                    people[id].update(a)
+# use models to detect
+def process_detector_func(models, image_bgr):
+    # Get models
+    face_detector, obj_detector, tracker, attributer = models
 
-            # gaze_targets = gaze_estimator(image_pil, [(f[0], f[1], f[2] - f[0], f[3] - f[1]) for f in faces])
+    # Perform detection
+    face_results = face_detector.detect(image_bgr, rgb=False)
+    obj_results = obj_detector.detect(image_bgr, rgb=False)
+    people_results = [r for r in obj_results if r.class_id == 1]  # Extract person detection result
 
-            # Remove stale people
-            valid_ids = set(tracker.get_valid_ids())
-            for id in people.keys() - valid_ids:
-                people.pop(id)
+    # Tracking
+    tracked_people, removed_ids = tracker.update(face_results, people_results, image_bgr, rgb=False)
 
-            draw = ImageDraw.Draw(image_pil)
-            # for f, id, g in zip(faces, ids, gaze_targets):
-            for f, id in zip(faces, ids):
-                # bbox_color = (255, 0, 0) if people[id].gender == 0 else (0, 0, 255)
-                bbox_color = (255, 0, 0)
-                draw_person_attributes(draw, people[id], f, f)
-                draw_bounding_box_pil(f, draw, bbox_color)
-                # draw_gaze_target_pil((int((g[0] - 1280) / 3 + 320), int(g[1] / 3)), draw, (0, 0, 255))
-        image_rgb = np.array(image_pil)
-        image_bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
-        cv2.imshow('video', image_bgr)
-        k = cv2.waitKey(1)
-        if k == 27:  # Esc key to stop
-            break
+    # Calculate people's attributes
+    attributer.remove_people(removed_ids)
+    people = [(p.id, p.face_box, p.body_box) for p in tracked_people]  # Convert to attributer accepted format
+    people_attrs = attributer(image_bgr, people)
+
+    # Draw detection and tracking results
+    image_disp = draw_tracked_people(image_bgr, tracked_people)
+
+    # Draw attribute results
+    image_pil = Image.fromarray(cv2.cvtColor(image_disp, cv2.COLOR_BGR2RGB))
+    draw = ImageDraw.Draw(image_pil)
+    for trk, attr in zip(tracked_people, people_attrs):
+        draw_person_attributes(draw, attr, trk.face_box, trk.body_box)
+
+    image_disp = cv2.cvtColor(np.array(image_pil), cv2.COLOR_RGB2BGR)
+
+    return image_disp
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--gaze_model',
-        default='facegaze',
+        '--video',
         type=str,
-        help='facegaze | eyegaze')
+        help="Run prediction on a given video. "
+             "This argument is the path to the input video file")
     parser.add_argument(
-        '--gaze_conv',
-        default='resnet18',
-        type=str)
+        '--cam',
+        type=int,
+        help='Specify which camera to detect.')
     parser.add_argument(
-        '--gaze_checkpoint',
+        '--face_model',
+        default='s3fd',
+        type=str,
+        help='s3fd | tf-model')
+    parser.add_argument(
+        '--obj_model',
+        default='tensorpack',
+        type=str,
+        help='tensorpack | tf-model')
+    parser.add_argument(
+        '--face_ckpt',
         default='',
         type=str,
-        help='Save data (.pth) of previous training')
+        help='Checkpoint of face detection model')
     parser.add_argument(
-        '--attribute_model',
+        '--obj_ckpt',
+        default='',
+        type=str,
+        help='Checkpoint of object detection model')
+    parser.add_argument(
+        '--face_config',
+        default='',
+        type=str,
+        help='Configurations of face detection model',
+        nargs='+'
+    )
+    parser.add_argument(
+        '--obj_config',
+        default='',
+        type=str,
+        help='Configurations of object detection model',
+        nargs='+'
+    )
+    parser.add_argument(
+        '--model',
         default='all_in_one',
         type=str,
-        help='all_in_one')
+        help='all_in_one | hyperface')
     parser.add_argument(
-        '--attribute_conv',
+        '--conv',
         default='resnet18',
         type=str)
     parser.add_argument(
-        '--attribute_checkpoint',
+        '--checkpoint',
         default='',
         type=str,
         help='Save data (.pth) of previous training')
+    parser.add_argument(
+        '--pretrain', action='store_true', help='Whether to use pretrained weights in conv models')
+    args = parser.parse_args()
 
-    opt = parser.parse_args()
-
-    gaze_opt, attr_opt = argparse.Namespace(), argparse.Namespace()
-    gaze_opt.model = opt.gaze_model
-    gaze_opt.conv = opt.gaze_conv
-    gaze_opt.checkpoint = opt.gaze_checkpoint
-    gaze_opt.pretrain = False
-    attr_opt.model = opt.attribute_model
-    attr_opt.conv = opt.attribute_conv
-    attr_opt.checkpoint = opt.attribute_checkpoint
-    attr_opt.pretrain = False
-
-    main(gaze_opt, attr_opt)
+    run(init_detector_func, process_detector_func, args, args.cam, args.video)
