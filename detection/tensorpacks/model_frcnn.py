@@ -118,12 +118,19 @@ def attrs_head(name, feature):
         return attrs_logits
 
 
+# 2048-->512-->2
+# def attr_output(name, feature):
+#     hidden = FullyConnected('{}_hidden'.format(name), feature, 512, activation=tf.nn.relu,
+#                             kernel_initializer=tf.random_normal_initializer(stddev=0.01))
+#     attr = FullyConnected(
+#         name, hidden, 2,
+#         kernel_initializer=tf.random_normal_initializer(stddev=0.01))
+#     return attr
+
+# 2048-->512-->2
 def attr_output(name, feature):
-    hidden = FullyConnected('{}_hidden'.format(name), feature, 512, activation=tf.nn.relu,
-                            kernel_initializer=tf.random_normal_initializer(stddev=0.01))
-    attr = FullyConnected(
-        name, hidden, 2,
-        kernel_initializer=tf.random_normal_initializer(stddev=0.01))
+    attr = FullyConnected(name, feature, 2,
+                          kernel_initializer=tf.random_normal_initializer(stddev=0.01))
     return attr
 
 
@@ -177,7 +184,6 @@ def attr_losses(attr_name, labels, logits):
     # attr_loss = tf.reduce_mean(attr_loss, name='attr_loss')
 
     with tf.name_scope('{}_metrics'.format(attr_name)), tf.device('/cpu:0'):
-
         prediction = tf.argmax(valid_logits, axis=1, name='{}_prediction'.format(attr_name))
         correct = tf.to_float(tf.equal(prediction, valid_label))  # boolean/integer gather is unavailable on GPU
         # expend dim to prevent divide by zero

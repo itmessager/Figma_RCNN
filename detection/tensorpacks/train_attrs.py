@@ -14,6 +14,8 @@ import os
 
 from concurrent.futures import ThreadPoolExecutor
 
+from detection.tensorpacks.model_mrcnn import maskrcnn_upXconv_head
+
 try:
     import horovod.tensorflow as hvd
 except ImportError:
@@ -104,32 +106,74 @@ class ResNetC4Model(DetectionModel):
         return ret
 
     def build_graph(self, *inputs):
-        inputs = dict(zip(self.input_names, inputs))
-        image = self.preprocess(inputs['image'])  # 1CHW
-        # build resnet c4
-        featuremap = resnet_c4_backbone(image, cfg.BACKBONE.RESNET_NUM_BLOCK[:3])
-        # predict attrs b
-        boxes_on_featuremap = inputs['gt_boxes'] * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
-        roi_resized = roi_align(featuremap, boxes_on_featuremap, 14)
-        feature_attrs = resnet_conv5(roi_resized,
-                                     cfg.BACKBONE.RESNET_NUM_BLOCK[-1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
-        # Keep C5 feature to be shared with mask branch
-        feature_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  # ??
-        # build attrs branch
+        mask = False
+        if mask:
+            inputs = dict(zip(self.input_names, inputs))
+            image = self.preprocess(inputs['image'])  # 1CHW
+            # build resnet c4
+            featuremap = resnet_c4_backbone(image, cfg.BACKBONE.RESNET_NUM_BLOCK[:3])
+            # predict attrs b
+            boxes_on_featuremap = inputs['gt_boxes'] * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
+            roi_resized = roi_align(featuremap, boxes_on_featuremap, 14)
+            feature_maskrcnn = resnet_conv5(roi_resized,
+                                         cfg.BACKBONE.RESNET_NUM_BLOCK[-1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
+            # Keep C5 feature to be shared with mask branch
+            mask_logits = maskrcnn_upXconv_head(
+                'maskrcnn', feature_maskrcnn, cfg.DATA.NUM_CATEGORY, 0)  # #result x #cat x 14x14
+            indices = tf.stack([tf.range(tf.size(final_labels)), tf.to_int32(final_labels) - 1], axis=1)
+            final_mask_logits = tf.gather_nd(mask_logits, indices)  # #resultx14x14
+            final_mask_logits = tf.sigmoid(final_mask_logits, name='output/masks')
+            final_mask_logits_expand = tf.expand_dims(final_mask_logits, axis=1)
+            final_mask_logits_tile = tf.tile(final_mask_logits_expand, multiples=[1, 1024, 1, 1])
+            fg_mask_roi_resized = tf.where(final_mask_logits_tile >= 0.5, roi_resized,
+                                           tf.zeros_like(roi_resized))
+            feature_attrs = resnet_conv5(fg_mask_roi_resized,
+                                         cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
 
-        attrs_logits = attrs_head('attrs', feature_gap)
-        attrs_loss = all_attrs_losses(inputs, attrs_logits)
+            feature_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  # ??
+            # build attrs branch
 
-        all_losses = []
-        # male loss
-        all_losses.append(attrs_loss)
-        wd_cost = regularize_cost(
-            '.*/W', l2_regularizer(cfg.TRAIN.WEIGHT_DECAY), name='wd_cost')
-        all_losses.append(wd_cost)
-        total_cost = tf.add_n(all_losses, 'total_cost')
+            attrs_logits = attrs_head('attrs', feature_gap)
+            attrs_loss = all_attrs_losses(inputs, attrs_logits)
 
-        add_moving_summary(wd_cost, total_cost)
-        return total_cost
+            all_losses = []
+            # male loss
+            all_losses.append(attrs_loss)
+            wd_cost = regularize_cost(
+                '.*/W', l2_regularizer(cfg.TRAIN.WEIGHT_DECAY), name='wd_cost')
+            all_losses.append(wd_cost)
+            total_cost = tf.add_n(all_losses, 'total_cost')
+
+            add_moving_summary(wd_cost, total_cost)
+            return total_cost
+
+        else:
+            inputs = dict(zip(self.input_names, inputs))
+            image = self.preprocess(inputs['image'])  # 1CHW
+            # build resnet c4
+            featuremap = resnet_c4_backbone(image, cfg.BACKBONE.RESNET_NUM_BLOCK[:3])
+            # predict attrs b
+            boxes_on_featuremap = inputs['gt_boxes'] * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
+            roi_resized = roi_align(featuremap, boxes_on_featuremap, 14)
+            feature_attrs = resnet_conv5(roi_resized,
+                                         cfg.BACKBONE.RESNET_NUM_BLOCK[-1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
+            # Keep C5 feature to be shared with mask branch
+            feature_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  # ??
+            # build attrs branch
+
+            attrs_logits = attrs_head('attrs', feature_gap)
+            attrs_loss = all_attrs_losses(inputs, attrs_logits)
+
+            all_losses = []
+            # male loss
+            all_losses.append(attrs_loss)
+            wd_cost = regularize_cost(
+                '.*/W', l2_regularizer(cfg.TRAIN.WEIGHT_DECAY), name='wd_cost')
+            all_losses.append(wd_cost)
+            total_cost = tf.add_n(all_losses, 'total_cost')
+
+            add_moving_summary(wd_cost, total_cost)
+            return total_cost
 
 
 class EvalCallback(Callback):
