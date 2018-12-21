@@ -47,6 +47,8 @@ def male_losses(male_labels, male_logits):
 
     with tf.name_scope('label_metrics'), tf.device('/cpu:0'):
         prediction = tf.argmax(valid_male_logits, axis=1, name='label_prediction')
+        positive_label = tf.where(valid_males_label == 1.0)
+
         correct1 = tf.to_float(tf.equal(prediction, valid_males_label))  # boolean/integer gather is unavailable on GPU
         # expend dim to prevent divide by zero
         correct = tf.concat([correct1, expand_dim], 0)

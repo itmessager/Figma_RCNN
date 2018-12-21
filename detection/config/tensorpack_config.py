@@ -54,7 +54,7 @@ _C.TRAIN.STEPS_PER_EPOCH = 500
 # LR_SCHEDULE means "steps" only when total batch size is 8.
 # Otherwise the actual steps to decrease learning rate are computed from the schedule.
 # Therefore, there is *no need* to modify the config if you only change tdhe number of GPUs.
-_C.TRAIN.LR_SCHEDULE = [2000, 160000, 180000]  # "1x" schedule in detectron
+_C.TRAIN.LR_SCHEDULE = [5000, 120000, 180000]  # "1x" schedule in detectron
 # _C.TRAIN.LR_SCHEDULE = [240000, 320000, 360000]    # "2x" schedule in detectron
 _C.TRAIN.NUM_EVALS = 20  # number of evaluations to run during training
 

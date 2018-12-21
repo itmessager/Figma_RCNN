@@ -106,6 +106,15 @@ def sample_fast_rcnn_targets(boxes, gt_boxes, gt_labels):
 
 # @layer_register(log_shape=True)    # add layer_register if the npz contain this layer
 def attrs_head(name, feature):
+    """
+    Attribute branchs
+    Args:
+        name: name scope
+        feature: feature of rois
+    Returns:
+        A Dict
+        attribute name: attribute logits
+    """
     with tf.name_scope(name):
         attrs_logits = {'male': attr_output('male', feature), 'longhair': attr_output('longhair', feature),
                         'sunglass': attr_output('sunglass', feature), 'hat': attr_output('hat', feature),
@@ -127,7 +136,7 @@ def attrs_head(name, feature):
 #         kernel_initializer=tf.random_normal_initializer(stddev=0.01))
 #     return attr
 
-# 2048-->512-->2
+# 2048-->2
 def attr_output(name, feature):
     attr = FullyConnected(name, feature, 2,
                           kernel_initializer=tf.random_normal_initializer(stddev=0.01))

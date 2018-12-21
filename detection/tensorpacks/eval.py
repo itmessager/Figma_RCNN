@@ -64,7 +64,7 @@ def detect_one_image(img, model_func):
     resizer = CustomResize(cfg.PREPROC.TEST_SHORT_EDGE_SIZE, cfg.PREPROC.MAX_SIZE)
     resized_img = resizer.augment(img)
     scale = np.sqrt(resized_img.shape[0] * 1.0 / img.shape[0] * resized_img.shape[1] / img.shape[1])
-    boxes, probs, labels, *masks, male = model_func(resized_img)
+    boxes, probs, labels, *masks = model_func(resized_img)
     boxes = boxes / scale
     # boxes are already clipped inside the graph, but after the floating point scaling, this may not be true any more.
     boxes = clip_boxes(boxes, orig_shape)
@@ -78,7 +78,7 @@ def detect_one_image(img, model_func):
         # fill with none
         masks = [None] * len(boxes)
 
-    results = [DetectionResult(*args) for args in zip(boxes, probs, labels, masks, male)]
+    results = [DetectionResult(*args) for args in zip(boxes, probs, labels, masks)]
     return results
 
 

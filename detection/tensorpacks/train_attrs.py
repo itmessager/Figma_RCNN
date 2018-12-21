@@ -106,7 +106,7 @@ class ResNetC4Model(DetectionModel):
         return ret
 
     def build_graph(self, *inputs):
-        mask = False
+        mask = True
         if mask:
             inputs = dict(zip(self.input_names, inputs))
             image = self.preprocess(inputs['image'])  # 1CHW
@@ -120,7 +120,9 @@ class ResNetC4Model(DetectionModel):
             # Keep C5 feature to be shared with mask branch
             mask_logits = maskrcnn_upXconv_head(
                 'maskrcnn', feature_maskrcnn, cfg.DATA.NUM_CATEGORY, 0)  # #result x #cat x 14x14
-            indices = tf.stack([tf.range(tf.size(final_labels)), tf.to_int32(final_labels) - 1], axis=1)
+            # Assume only person here
+            person_labels = tf.ones_like(inputs['male']) + 1
+            indices = tf.stack([tf.range(tf.size(person_labels)), tf.to_int32(person_labels) - 1], axis=1)
             final_mask_logits = tf.gather_nd(mask_logits, indices)  # #resultx14x14
             final_mask_logits = tf.sigmoid(final_mask_logits, name='output/masks')
             final_mask_logits_expand = tf.expand_dims(final_mask_logits, axis=1)

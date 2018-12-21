@@ -37,8 +37,8 @@ from detection.tensorpacks.basemodel import (
 from detection.tensorpacks import model_frcnn
 from detection.tensorpacks import model_mrcnn
 from detection.tensorpacks.model_frcnn import (
-    sample_fast_rcnn_targets, fastrcnn_outputs, attr_outputs, male_losses, male_output,
-    fastrcnn_predictions, BoxProposals, FastRCNNHead)
+    sample_fast_rcnn_targets, fastrcnn_outputs,
+    fastrcnn_predictions, BoxProposals, FastRCNNHead, attrs_head, all_attrs_losses)
 from detection.tensorpacks.model_mrcnn import maskrcnn_upXconv_head, maskrcnn_loss
 from detection.tensorpacks.model_rpn import rpn_head, rpn_losses, generate_rpn_proposals
 from detection.tensorpacks.model_fpn import (
@@ -132,8 +132,8 @@ class ResNetC4Model(DetectionModel):
         # Keep C5 feature to be shared with mask branch
         feature_gap = GlobalAvgPooling('gap', feature_fastrcnn, data_format='channels_first') # ??
         # build my net branch!
-        male_logits = male_output('attrs', feature_gap)
-        male_loss = male_losses(inputs['male'], male_logits)
+        attrs_logits = attrs_head('attrs', feature_gap)
+        #attrs_loss = all_attrs_losses(inputs, attrs_logits)
 
         fastrcnn_label_logits, fastrcnn_box_logits = fastrcnn_outputs('fastrcnn', feature_gap, cfg.DATA.NUM_CLASS) # ??
         # Returns:
@@ -198,7 +198,7 @@ if __name__ == '__main__':
             model=MODEL,  # model
             session_init=get_model_loader(args.load), # weight
             input_names=['image'],
-            output_names=['output/boxes', 'output/scores', 'output/labels', 'output/masks', 'male_1/output']))
+            output_names=['output/boxes', 'output/scores', 'output/labels', 'output/masks']))
 
         COCODetection(cfg.DATA.BASEDIR,'val2014')  # load the class names into cfg.DATA.CLASS_NAMES
         predict(pred, args.predict) # contain vislizaiton
