@@ -128,19 +128,19 @@ def attrs_head(name, feature):
 
 
 # 2048-->512-->2
-# def attr_output(name, feature):
-#     hidden = FullyConnected('{}_hidden'.format(name), feature, 512, activation=tf.nn.relu,
-#                             kernel_initializer=tf.random_normal_initializer(stddev=0.01))
-#     attr = FullyConnected(
-#         name, hidden, 2,
-#         kernel_initializer=tf.random_normal_initializer(stddev=0.01))
-#     return attr
+def attr_output(name, feature):
+    hidden = FullyConnected('{}_hidden'.format(name), feature, 512, activation=tf.nn.relu,
+                            kernel_initializer=tf.random_normal_initializer(stddev=0.01))
+    attr = FullyConnected(
+        name, hidden, 2,
+        kernel_initializer=tf.random_normal_initializer(stddev=0.01))
+    return attr
 
 # 2048-->2
-def attr_output(name, feature):
-    attr = FullyConnected(name, feature, 2,
-                          kernel_initializer=tf.random_normal_initializer(stddev=0.01))
-    return attr
+# def attr_output(name, feature):
+#     attr = FullyConnected(name, feature, 2,
+#                           kernel_initializer=tf.random_normal_initializer(stddev=0.01))
+#     return attr
 
 
 # @under_name_scope()
@@ -184,11 +184,11 @@ def attr_losses(attr_name, labels, logits):
     valid_inds = tf.where(labels >= 0)
     valid_label = tf.reshape(tf.gather(labels, valid_inds), [-1])
     valid_logits = tf.reshape(tf.gather(logits, valid_inds), [-1, 2])
-    valid_label_2D = tf.one_hot(valid_label, 2)
-    valid_label_2D = tf.cast(valid_label_2D, tf.float32)
+    #valid_label_2D = tf.one_hot(valid_label, 2)
+    #valid_label_2D = tf.cast(valid_label_2D, tf.float32)
 
-    attr_loss = tf.nn.sigmoid_cross_entropy_with_logits(
-        labels=valid_label_2D, logits=valid_logits)
+    attr_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+        labels=valid_label, logits=valid_logits)
     attr_loss_sum = tf.reduce_sum(attr_loss, name='{}_loss'.format(attr_name))
     # attr_loss = tf.reduce_mean(attr_loss, name='attr_loss')
 

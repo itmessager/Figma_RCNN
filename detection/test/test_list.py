@@ -11,8 +11,11 @@
 import numpy as np
 import tensorflow as tf
 #males =tf.constant(np.array([-1, 0, 1, 1, 0, -1, 0, 1, 1, 0]))
-males =tf.constant(np.array([1, -1, -1, -1, -1, -1, -1, -1, -1, -1]))
-male_logits = tf.constant(np.array([(0.4, 0.5), (0.72, 0.58), (0.16, 0.84), (0.77, 0.83), (0.51, 0.49),(0.4, 0.4), (0.72, 0.58), (0.84, 0.16), (0.77, 0.83), (0.49, 0.51)]))
+males =tf.constant(np.array([[-1, 1, -1, -1, -1, -1, -1, -1, -1, -1],
+                             [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+                            ]))
+male_logits = tf.constant(np.array([[(0.4, 0.5), (0.72, 0.58), (0.16, 0.84), (0.77, 0.83), (0.51, 0.49),(0.4, 0.4), (0.72, 0.58), (0.84, 0.16), (0.77, 0.83), (0.49, 0.51)],
+                                   [(0.4, 0.5), (0.72, 0.58), (0.16, 0.84), (0.77, 0.83), (0.51, 0.49),(0.4, 0.4), (0.72, 0.58), (0.84, 0.16), (0.77, 0.83), (0.49, 0.51)]]))
 #
 # valid_inds = tf.where(males >= 0)
 # valid_males_label = tf.gather(males,valid_inds)
@@ -53,7 +56,8 @@ def male_losses(male_labels, male_logits):
         # expend dim to prevent divide by zero
         correct = tf.concat([correct1, expand_dim], 0)
         accuracy = tf.reduce_mean(correct, name='accuracy')
-    return valid_inds, prediction, correct1,correct, male_loss,accuracy
+        accuracy1 = tf.reduce_mean(correct1, name='accuracy')
+    return valid_inds, prediction, correct1,correct, male_loss,accuracy,accuracy1
 
 
 if __name__=='__main__':

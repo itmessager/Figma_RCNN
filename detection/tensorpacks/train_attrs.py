@@ -128,7 +128,7 @@ class ResNetC4Model(DetectionModel):
             final_mask_logits_expand = tf.expand_dims(final_mask_logits, axis=1)
             final_mask_logits_tile = tf.tile(final_mask_logits_expand, multiples=[1, 1024, 1, 1])
             fg_mask_roi_resized = tf.where(final_mask_logits_tile >= 0.5, roi_resized,
-                                           tf.zeros_like(roi_resized))
+                                           roi_resized*0.0)
             feature_attrs = resnet_conv5(fg_mask_roi_resized,
                                          cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
 
