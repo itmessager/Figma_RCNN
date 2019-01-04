@@ -122,7 +122,7 @@ def attrs_head(name, feature):
                         'formal': attr_output('formal', feature), 'shorts': attr_output('shorts', feature),
                         'jeans': attr_output('jeans', feature), 'skirt': attr_output('skirt', feature),
                         'facemask': attr_output('facemask', feature), 'logo': attr_output('logo', feature),
-                        'stripe': attr_output('stripe', feature)}
+                        'stripe': attr_output('stripe', feature),'longpants': attr_output('longpants', feature)}
 
         return attrs_logits
 
@@ -167,10 +167,38 @@ def all_attrs_losses(attr_labels, attr_label_logits):
                   attr_losses('skirt', attr_labels['skirt'], attr_label_logits['skirt']),
                   attr_losses('facemask', attr_labels['facemask'], attr_label_logits['facemask']),
                   attr_losses('logo', attr_labels['logo'], attr_label_logits['logo']),
-                  attr_losses('stripe', attr_labels['stripe'], attr_label_logits['stripe'])]
+                  attr_losses('stripe', attr_labels['stripe'], attr_label_logits['stripe']),
+                  attr_losses('longpants', attr_labels['longpants'], attr_label_logits['longpants'])]
     attrs_loss = tf.add_n(attrs_loss)
     return attrs_loss
 
+
+# def attr_losses(attr_name, labels, logits):
+#     """
+#     Args:
+#         labels: n,[-1,0,1,1,0]
+#         logits: nx2 [(0.4,0.6),(0.72,0.28),(0.84,0.16),(0.17,0.83),(0.49,0.51)]
+#     Returns:
+#         attr_loss
+#     """
+#     # filter the unrecognization out
+#     valid_inds = tf.where(labels >= 0)
+#     valid_label = tf.reshape(tf.gather(labels, valid_inds), [-1])
+#     valid_logits = tf.reshape(tf.gather(logits, valid_inds), [-1, 2])
+#     attr_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+#         labels=valid_label, logits=valid_logits)
+#     attr_loss_sum = tf.reduce_sum(attr_loss, name='{}_loss'.format(attr_name))
+#     #attr_loss_sum = tf.reduce_mean(attr_loss, name='attr_loss')
+#
+#     with tf.name_scope('{}_metrics'.format(attr_name)), tf.device('/cpu:0'):
+#         prediction = tf.argmax(valid_logits, axis=1, name='{}_prediction'.format(attr_name))
+#         correct = tf.to_float(tf.equal(prediction, valid_label))  # boolean/integer gather is unavailable on GPU
+#         # expend dim to prevent divide by zero
+#         expand_dim = tf.constant([0.5])
+#         correct = tf.concat([correct, expand_dim], 0)
+#         accuracy = tf.reduce_mean(correct, name='{}_accuracy'.format(attr_name))
+#     add_moving_summary(attr_loss_sum, accuracy)
+#     return attr_loss_sum
 
 def attr_losses(attr_name, labels, logits):
     """
@@ -181,27 +209,33 @@ def attr_losses(attr_name, labels, logits):
         attr_loss
     """
     # filter the unrecognization out
+
+    specific_labels = tf.where(labels >= 0, tf.ones_like(labels), tf.zeros_like(labels))
+    specific_logits = tf.reshape(logits[:, 0], [-1])
+    attribute_logits = logits[:, 1]
+    specific_loss = tf.nn.sigmoid_cross_entropy_with_logits(
+        labels=tf.to_float(specific_labels), logits=specific_logits)
+    specific_loss_mean = tf.reduce_mean(specific_loss)
     valid_inds = tf.where(labels >= 0)
-    valid_label = tf.reshape(tf.gather(labels, valid_inds), [-1])
-    valid_logits = tf.reshape(tf.gather(logits, valid_inds), [-1, 2])
-    #valid_label_2D = tf.one_hot(valid_label, 2)
-    #valid_label_2D = tf.cast(valid_label_2D, tf.float32)
+    valid_attr_labels = tf.reshape(tf.gather(labels,valid_inds), [-1])
+    valid_attr_logits = tf.reshape(tf.gather(attribute_logits,valid_inds), [-1])
 
-    attr_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-        labels=valid_label, logits=valid_logits)
-    attr_loss_sum = tf.reduce_sum(attr_loss, name='{}_loss'.format(attr_name))
-    # attr_loss = tf.reduce_mean(attr_loss, name='attr_loss')
 
+    attr_loss = tf.nn.sigmoid_cross_entropy_with_logits(
+        labels=tf.to_float(valid_attr_labels), logits=valid_attr_logits)
+    attr_loss_sum = tf.reduce_sum(attr_loss)
+    # attr_loss_sum = tf.reduce_mean(attr_loss, name='attr_loss')
+    loss = tf.add_n([attr_loss_sum, specific_loss_mean], name='{}_loss'.format(attr_name))
     with tf.name_scope('{}_metrics'.format(attr_name)), tf.device('/cpu:0'):
-        prediction = tf.argmax(valid_logits, axis=1, name='{}_prediction'.format(attr_name))
-        correct = tf.to_float(tf.equal(prediction, valid_label))  # boolean/integer gather is unavailable on GPU
-        # expend dim to prevent divide by zero
-        expand_dim = tf.constant([0.5])
-        correct = tf.concat([correct, expand_dim], 0)
+        prediction = tf.where(attribute_logits > 0.5, tf.ones_like(attribute_logits),tf.zeros_like(attribute_logits))
+        prediction = tf.where(specific_logits < 0.5, -tf.ones_like(prediction), prediction)
+        prediction = tf.to_int64(prediction, name='{}_prediction'.format(attr_name))
+        correct = tf.to_float(tf.equal(prediction, labels))  # boolean/integer gather is unavailable on GPU
         accuracy = tf.reduce_mean(correct, name='{}_accuracy'.format(attr_name))
-    add_moving_summary(attr_loss_sum, accuracy)
-    return attr_loss_sum
 
+    add_moving_summary(attr_loss_sum, accuracy)
+
+    return loss
 
 @layer_register(log_shape=True)
 def fastrcnn_outputs(feature, num_classes, class_agnostic_regression=False):

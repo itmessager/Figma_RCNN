@@ -31,8 +31,7 @@ from tensorpack.tfutils import optimizer
 
 from detection.tensorpacks.coco import COCODetection
 from detection.tensorpacks.basemodel import (
-    image_preprocess, resnet_c4_backbone, resnet_conv5,
-    resnet_fpn_backbone)
+    image_preprocess, resnet_c4_backbone, resnet_conv5)
 
 from detection.tensorpacks.model_frcnn import (
     sample_fast_rcnn_targets, fastrcnn_outputs, attrs_head,
@@ -74,20 +73,20 @@ class ResNetC4Model(DetectionModel):
             tf.placeholder(tf.float32, (None, None, 3), 'image'),
             # box of each ground truth
             tf.placeholder(tf.float32, (None, 4), 'gt_boxes'),
-            # 1  male_labels of each ground truth
+            # male_labels of each ground truth
             tf.placeholder(tf.int64, (None,), 'male'),
-            # 2 longhair_labels of each ground truth
+            # longhair_labels of each ground truth
             tf.placeholder(tf.int64, (None,), 'longhair'),
-            # 3 sunglass_labels of each ground truth
+            # sunglass_labels of each ground truth
             tf.placeholder(tf.int64, (None,), 'sunglass'),
-            # 4 hat_labels of each ground truth
+            # hat_labels of each ground truth
             tf.placeholder(tf.int64, (None,), 'hat'),
-            # 5 tshort_labels of each ground truth
+            # tshort_labels of each ground truth
             tf.placeholder(tf.int64, (None,), 'tshirt'),
             # 6
             tf.placeholder(tf.int64, (None,), 'longsleeve'),
             # 7
-            tf.placeholder(tf.int64, (None,),  'formal'),
+            tf.placeholder(tf.int64, (None,), 'formal'),
             # 8
             tf.placeholder(tf.int64, (None,), 'shorts'),
             # 9
@@ -116,19 +115,20 @@ class ResNetC4Model(DetectionModel):
             boxes_on_featuremap = inputs['gt_boxes'] * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
             roi_resized = roi_align(featuremap, boxes_on_featuremap, 14)
             feature_maskrcnn = resnet_conv5(roi_resized,
-                                         cfg.BACKBONE.RESNET_NUM_BLOCK[-1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
+                                            cfg.BACKBONE.RESNET_NUM_BLOCK[
+                                                -1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
             # Keep C5 feature to be shared with mask branch
             mask_logits = maskrcnn_upXconv_head(
                 'maskrcnn', feature_maskrcnn, cfg.DATA.NUM_CATEGORY, 0)  # #result x #cat x 14x14
             # Assume only person here
-            person_labels = tf.ones_like(inputs['male']) + 1
+            person_labels = tf.ones_like(inputs['male'])
             indices = tf.stack([tf.range(tf.size(person_labels)), tf.to_int32(person_labels) - 1], axis=1)
             final_mask_logits = tf.gather_nd(mask_logits, indices)  # #resultx14x14
             final_mask_logits = tf.sigmoid(final_mask_logits, name='output/masks')
             final_mask_logits_expand = tf.expand_dims(final_mask_logits, axis=1)
             final_mask_logits_tile = tf.tile(final_mask_logits_expand, multiples=[1, 1024, 1, 1])
             fg_mask_roi_resized = tf.where(final_mask_logits_tile >= 0.5, roi_resized,
-                                           roi_resized*0.0)
+                                           roi_resized * 0.0)
             feature_attrs = resnet_conv5(fg_mask_roi_resized,
                                          cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
 
@@ -138,9 +138,8 @@ class ResNetC4Model(DetectionModel):
             attrs_logits = attrs_head('attrs', feature_gap)
             attrs_loss = all_attrs_losses(inputs, attrs_logits)
 
-            all_losses = []
+            all_losses = [attrs_loss]
             # male loss
-            all_losses.append(attrs_loss)
             wd_cost = regularize_cost(
                 '.*/W', l2_regularizer(cfg.TRAIN.WEIGHT_DECAY), name='wd_cost')
             all_losses.append(wd_cost)
@@ -166,9 +165,8 @@ class ResNetC4Model(DetectionModel):
             attrs_logits = attrs_head('attrs', feature_gap)
             attrs_loss = all_attrs_losses(inputs, attrs_logits)
 
-            all_losses = []
+            all_losses = [attrs_loss]
             # male loss
-            all_losses.append(attrs_loss)
             wd_cost = regularize_cost(
                 '.*/W', l2_regularizer(cfg.TRAIN.WEIGHT_DECAY), name='wd_cost')
             all_losses.append(wd_cost)
@@ -333,22 +331,12 @@ if __name__ == '__main__':
 
     traincfg = TrainConfig(
         model=MODEL,
-        data=QueueInput(get_attributes_dataflow()),
+        data=QueueInput(train_attrs_dataflow),
         callbacks=callbacks,
         steps_per_epoch=stepnum,
         max_epoch=cfg.TRAIN.LR_SCHEDULE[-1] * factor // stepnum,
         session_init=session_init,
     )
-
-    # traincfg = TrainConfig(
-    #     model=MODEL,
-    #     # The input source for training. FeedInput is slow, this is just for demo purpose.
-    #     # In practice it's best to use QueueInput or others. See tutorials for details.
-    #     data=FeedInput(get_males_dataflow()),
-    #     callbacks=callbacks,
-    #     steps_per_epoch=50,
-    #     max_epoch=100,
-    # )
 
     if is_horovod:
         trainer = HorovodTrainer(average=False)
