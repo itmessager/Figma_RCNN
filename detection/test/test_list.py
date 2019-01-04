@@ -30,7 +30,7 @@ def attr_losses(male_labels, male_logits):
     attribute_logits = male_logits[:, 1]
     specific_loss = tf.nn.sigmoid_cross_entropy_with_logits(
         labels=tf.to_float(specific_labels), logits=specific_logits)
-
+    specific_loss_mean = tf.reduce_mean(specific_loss)
 
     valid_male_labels = tf.reshape(tf.gather(male_labels,valid_inds), [-1])
     valid_male_logits = tf.reshape(tf.gather(attribute_logits,valid_inds), [-1])
@@ -51,12 +51,12 @@ def attr_losses(male_labels, male_logits):
         # expend dim to prevent divide by zero
         accuracy = tf.reduce_mean(correct, name='accuracy')
 
-    return valid_inds, prediction, male_labels, male_loss,accuracy
+    return valid_inds, prediction, male_labels, male_loss,specific_loss_mean
 
 
 if __name__=='__main__':
-    loss = attr_losses(males, male_logits)
+    some_var = attr_losses(males, male_logits)
     sess = tf.Session()
-    loss = sess.run(loss)
+    some_var = sess.run(some_var)
 
-    print(loss)
+    print(some_var)

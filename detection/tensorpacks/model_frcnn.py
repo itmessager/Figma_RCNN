@@ -206,26 +206,31 @@ def attr_losses(attr_name, labels, logits):
         labels: n,[-1,0,1,1,0]
         logits: nx2 [(0.4,0.6),(0.72,0.28),(0.84,0.16),(0.17,0.83),(0.49,0.51)]
     Returns:
-        attr_loss
+        loss_sum:contain specific_loss and attr_loss
     """
-    # filter the unrecognization out
-
+    # the first num of logits is to determine whether the attribute is identifiable
     specific_labels = tf.where(labels >= 0, tf.ones_like(labels), tf.zeros_like(labels))
     specific_logits = tf.reshape(logits[:, 0], [-1])
-    attribute_logits = logits[:, 1]
+
     specific_loss = tf.nn.sigmoid_cross_entropy_with_logits(
         labels=tf.to_float(specific_labels), logits=specific_logits)
     specific_loss_mean = tf.reduce_mean(specific_loss)
-    valid_inds = tf.where(labels >= 0)
-    valid_attr_labels = tf.reshape(tf.gather(labels,valid_inds), [-1])
-    valid_attr_logits = tf.reshape(tf.gather(attribute_logits,valid_inds), [-1])
 
+    # the second num of logits is to determine whether the attribute is positive or negative
+    # only use the recognizable attribute to train the second num of logits
+    # filter the unrecognizable attribute out
+    valid_inds = tf.where(labels >= 0)
+    attribute_logits = logits[:, 1]
+
+    valid_attr_labels = tf.reshape(tf.gather(labels, valid_inds), [-1])
+    valid_attr_logits = tf.reshape(tf.gather(attribute_logits,valid_inds), [-1])
 
     attr_loss = tf.nn.sigmoid_cross_entropy_with_logits(
         labels=tf.to_float(valid_attr_labels), logits=valid_attr_logits)
     attr_loss_sum = tf.reduce_sum(attr_loss)
     # attr_loss_sum = tf.reduce_mean(attr_loss, name='attr_loss')
-    loss = tf.add_n([attr_loss_sum, specific_loss_mean], name='{}_loss'.format(attr_name))
+    loss_sum = tf.add_n([attr_loss_sum, specific_loss_mean], name='{}_loss'.format(attr_name))
+
     with tf.name_scope('{}_metrics'.format(attr_name)), tf.device('/cpu:0'):
         prediction = tf.where(attribute_logits > 0.5, tf.ones_like(attribute_logits),tf.zeros_like(attribute_logits))
         prediction = tf.where(specific_logits < 0.5, -tf.ones_like(prediction), prediction)
@@ -235,7 +240,7 @@ def attr_losses(attr_name, labels, logits):
 
     add_moving_summary(attr_loss_sum, accuracy)
 
-    return loss
+    return loss_sum
 
 @layer_register(log_shape=True)
 def fastrcnn_outputs(feature, num_classes, class_agnostic_regression=False):
