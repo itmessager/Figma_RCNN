@@ -9,7 +9,7 @@ import torch
 
 DetectionResult = namedtuple(
     'DetectionResult',
-    ['box', 'score', 'class_id', 'mask'])
+    ['box', 'score', 'class_id', 'mask', 'attrs'])
 """
 box: (xmin, ymin, xmax, ymax) in image original space
 score: float

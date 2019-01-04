@@ -85,12 +85,9 @@ class ResNetC4Model(DetectionModel):
             # box of each anchor
             tf.placeholder(tf.float32, (None, None, cfg.RPN.NUM_ANCHOR, 4), 'anchor_boxes'),
             # box of each ground truth
-            tf.placeholder(tf.float32, (None, 4), 'gt_boxes'),
+            tf.placeholder(tf.float32, (None, 4), 'gt_boxes')]
             # label of each ground truth
             #tf.placeholder(tf.int64, (None,), 'gt_labels'), # all > 0
-
-            # male_labels of each ground truth
-            tf.placeholder(tf.int64, (None,), 'male')]  # all > 0
 
             # mask of each ground truth
             #tf.placeholder(tf.uint8, (None, None, None), 'gt_masks')]# NR_GT x height x width
@@ -131,9 +128,6 @@ class ResNetC4Model(DetectionModel):
         feature_fastrcnn = resnet_conv5(roi_resized, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
         # Keep C5 feature to be shared with mask branch
         feature_gap = GlobalAvgPooling('gap', feature_fastrcnn, data_format='channels_first') # ??
-        # build my net branch!
-        attrs_logits = attrs_head('attrs', feature_gap)
-        #attrs_loss = all_attrs_losses(inputs, attrs_logits)
 
         fastrcnn_label_logits, fastrcnn_box_logits = fastrcnn_outputs('fastrcnn', feature_gap, cfg.DATA.NUM_CLASS) # ??
         # Returns:
@@ -161,7 +155,30 @@ class ResNetC4Model(DetectionModel):
             'maskrcnn', feature_maskrcnn, cfg.DATA.NUM_CATEGORY, 0)  # #result x #cat x 14x14
         indices = tf.stack([tf.range(tf.size(final_labels)), tf.to_int32(final_labels) - 1], axis=1)
         final_mask_logits = tf.gather_nd(mask_logits, indices)  # #resultx14x14
-        tf.sigmoid(final_mask_logits, name='output/masks')
+        final_mask_logits = tf.sigmoid(final_mask_logits, name='output/masks')
+
+        Mask = True
+        if Mask:
+            final_mask_logits_expand = tf.expand_dims(final_mask_logits, axis=1)
+            final_mask_logits_tile = tf.tile(final_mask_logits_expand, multiples=[1, 1024, 1, 1])
+            fg_mask_roi_resized = tf.where(final_mask_logits_tile >= 0.5, roi_resized,
+                                           roi_resized * 0.0)
+            feature_attrs = resnet_conv5(fg_mask_roi_resized,
+                                         cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
+
+            feature_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  # ??
+            attrs_logits = attrs_head('attrs', feature_gap)
+            print("hello")
+
+        else:
+            boxes_on_featuremap =  final_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
+            roi_resized = roi_align(featuremap, boxes_on_featuremap, 14)
+            feature_attrs = resnet_conv5(roi_resized,
+                                         cfg.BACKBONE.RESNET_NUM_BLOCK[-1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
+            # Keep C5 feature to be shared with mask branch
+            feature_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')
+            # build attrs branch
+            attrs_logits = attrs_head('attrs', feature_gap)
 
 
 def predict(pred_func, input_file):
@@ -198,7 +215,13 @@ if __name__ == '__main__':
             model=MODEL,  # model
             session_init=get_model_loader(args.load), # weight
             input_names=['image'],
-            output_names=['output/boxes', 'output/scores', 'output/labels', 'output/masks']))
+            output_names=['output/boxes', 'output/scores', 'output/labels', 'output/masks',
+                          'attrs/male/output', 'attrs/longhair/output', 'attrs/sunglass/output',
+                          'attrs/hat/output', 'attrs/tshirt/output', 'attrs/longsleeve/output',
+                          'attrs/formal/output', 'attrs/shorts/output', 'attrs/jeans/output',
+                          'attrs/skirt/output', 'attrs/facemask/output', 'attrs/logo/output',
+                          'attrs/stripe/output', 'attrs/longpants/output'
+                          ]))
 
         COCODetection(cfg.DATA.BASEDIR,'val2014')  # load the class names into cfg.DATA.CLASS_NAMES
         predict(pred, args.predict) # contain vislizaiton

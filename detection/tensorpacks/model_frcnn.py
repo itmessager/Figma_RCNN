@@ -107,7 +107,7 @@ def sample_fast_rcnn_targets(boxes, gt_boxes, gt_labels):
 # @layer_register(log_shape=True)    # add layer_register if the npz contain this layer
 def attrs_head(name, feature):
     """
-    Attribute branchs
+    Attribute network branchs
     Args:
         name: name scope
         feature: feature of rois
@@ -223,7 +223,7 @@ def attr_losses(attr_name, labels, logits):
     attribute_logits = logits[:, 1]
 
     valid_attr_labels = tf.reshape(tf.gather(labels, valid_inds), [-1])
-    valid_attr_logits = tf.reshape(tf.gather(attribute_logits,valid_inds), [-1])
+    valid_attr_logits = tf.reshape(tf.gather(attribute_logits, valid_inds), [-1])
 
     attr_loss = tf.nn.sigmoid_cross_entropy_with_logits(
         labels=tf.to_float(valid_attr_labels), logits=valid_attr_logits)
@@ -232,13 +232,13 @@ def attr_losses(attr_name, labels, logits):
     loss_sum = tf.add_n([attr_loss_sum, specific_loss_mean], name='{}_loss'.format(attr_name))
 
     with tf.name_scope('{}_metrics'.format(attr_name)), tf.device('/cpu:0'):
-        prediction = tf.where(attribute_logits > 0.5, tf.ones_like(attribute_logits),tf.zeros_like(attribute_logits))
+        prediction = tf.where(attribute_logits > 0.5, tf.ones_like(attribute_logits), tf.zeros_like(attribute_logits))
         prediction = tf.where(specific_logits < 0.5, -tf.ones_like(prediction), prediction)
         prediction = tf.to_int64(prediction, name='{}_prediction'.format(attr_name))
         correct = tf.to_float(tf.equal(prediction, labels))  # boolean/integer gather is unavailable on GPU
         accuracy = tf.reduce_mean(correct, name='{}_accuracy'.format(attr_name))
 
-    add_moving_summary(attr_loss_sum, accuracy)
+    add_moving_summary(loss_sum, accuracy)
 
     return loss_sum
 
