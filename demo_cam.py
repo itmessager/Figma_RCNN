@@ -8,11 +8,11 @@ from PIL import ImageDraw, Image
 
 from detection.core.detector_factory import get_detector
 from tracking.tracker import PersonTracker
-from attributer.attributer import AllInOneAttributer, Attributer
+from attributer.attributer import PersonAttrs
 from utils.viz_utils import draw_tracked_people, draw_person_attributes
 
 
-def run(init_func, process_func, args, cam=None, video=None):
+def run(init_models, process_func, args, cam=None, video=None):
     if cam:
         # Read camera
         cap = cv2.VideoCapture(0)
@@ -25,7 +25,7 @@ def run(init_func, process_func, args, cam=None, video=None):
     # Initialize model
     width, height = cap.get(3), cap.get(4)
     print((width, height))
-    models = init_func(args, width, height)
+    models = init_models(args, width, height)
 
     # cv2.namedWindow("video", cv2.WND_PROP_FULLSCREEN)
     # cv2.setWindowProperty("video", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
@@ -52,17 +52,16 @@ def run(init_func, process_func, args, cam=None, video=None):
 
 
 # generate models
-def init_detector_func(args, width, height):
+def init_models(args, width, height):
     face_detector = get_detector(args.face_model, args.face_ckpt, args.face_config)
     obj_detector = get_detector(args.obj_model, args.obj_ckpt, args.obj_config)
     tracker = PersonTracker()
-    attributer = Attributer(AllInOneAttributer(args))
-    return (face_detector, obj_detector, tracker, attributer)
+    return (face_detector, obj_detector, tracker)
 
 # use models to detect
 def process_detector_func(models, image_bgr):
     # Get models
-    face_detector, obj_detector, tracker, attributer = models
+    face_detector, obj_detector, tracker = models
 
     # Perform detection
     face_results = face_detector.detect(image_bgr, rgb=False)
@@ -71,12 +70,8 @@ def process_detector_func(models, image_bgr):
 
     # Tracking
     tracked_people, removed_ids = tracker.update(face_results, people_results, image_bgr, rgb=False)
-
     # Calculate people's attributes
-    attributer.remove_people(removed_ids)
-    people = [(p.id, p.face_box, p.body_box) for p in tracked_people]  # Convert to attributer accepted format
-    people_attrs = attributer(image_bgr, people)
-
+    people_attrs = [PersonAttrs(r) for r in people_results]
     # Draw detection and tracking results
     image_disp = draw_tracked_people(image_bgr, tracked_people)
 
@@ -137,11 +132,6 @@ if __name__ == "__main__":
         nargs='+'
     )
     parser.add_argument(
-        '--model',
-        default='all_in_one',
-        type=str,
-        help='all_in_one | hyperface')
-    parser.add_argument(
         '--conv',
         default='resnet18',
         type=str)
@@ -154,4 +144,4 @@ if __name__ == "__main__":
         '--pretrain', action='store_true', help='Whether to use pretrained weights in conv models')
     args = parser.parse_args()
 
-    run(init_detector_func, process_detector_func, args, args.cam, args.video)
+    run(init_models, process_detector_func, args, args.cam, args.video)

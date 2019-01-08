@@ -6,10 +6,21 @@ from collections import namedtuple
 
 import torch
 
-
 DetectionResult = namedtuple(
     'DetectionResult',
-    ['box', 'score', 'class_id', 'mask', 'attrs'])
+    ['box', 'score', 'class_id', 'mask', 'male', 'longhair',
+     'sunglass', 'hat', 'tshirt', 'longsleeve', 'formal', 'shorts',
+     'jeans', 'skirt', 'facemask', 'logo', 'stripe', 'longpants'])
+"""
+box: (xmin, ymin, xmax, ymax) in image original space
+score: float
+class_id: int, 1~NUM_CLASS
+mask: None, or a binary image of the original image shape
+"""
+
+DetectionFaceResult = namedtuple(
+    'DetectionResult',
+    ['box', 'score', 'class_id', 'mask'])
 """
 box: (xmin, ymin, xmax, ymax) in image original space
 score: float

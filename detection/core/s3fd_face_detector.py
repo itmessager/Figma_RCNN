@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from detection.core.s3fd import S3fd
 from detection.utils.bbox import *
-from detection.core.detector import PytorchDetector, DetectionResult
+from detection.core.detector import PytorchDetector, DetectionFaceResult
 from detection.config.s3fd_config import config as cfg
 
 
@@ -68,7 +68,7 @@ class S3fdFaceDetector(PytorchDetector):
         scores = bboxlist[:, 4]
 
         # Convert bboxlist to DetectionResult
-        detection_results = [DetectionResult(box=tuple(bbox), score=score, class_id=1, mask=None) for bbox, score in zip(clipped_boxes, scores)]
+        detection_results = [DetectionFaceResult(box=tuple(bbox), score=score, class_id=1, mask=None) for bbox, score in zip(clipped_boxes, scores)]
 
         return detection_results
 

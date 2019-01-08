@@ -136,11 +136,57 @@ def attr_output(name, feature):
         kernel_initializer=tf.random_normal_initializer(stddev=0.01))
     return attr
 
+
 # 2048-->2
 # def attr_output(name, feature):
 #     attr = FullyConnected(name, feature, 2,
 #                           kernel_initializer=tf.random_normal_initializer(stddev=0.01))
 #     return attr
+
+def attrs_predict(feature):
+    """
+    Attribute network branchs
+    Args:
+        name: name scope
+        feature: feature of rois
+    Returns:
+        A Dict
+        attribute name: attribute logits
+    """
+    attrs_logits = [logits_to_predict('male', feature), logits_to_predict('longhair', feature),
+                    logits_to_predict('sunglass', feature), logits_to_predict('hat', feature),
+                    logits_to_predict('tshirt', feature), logits_to_predict('longsleeve', feature),
+                    logits_to_predict('formal', feature), logits_to_predict('shorts', feature),
+                    logits_to_predict('jeans', feature), logits_to_predict('skirt', feature),
+                    logits_to_predict('facemask', feature), logits_to_predict('logo', feature),
+                    logits_to_predict('stripe', feature),logits_to_predict('longpants', feature)]
+
+    return attrs_logits
+
+
+def logits_to_predict(name, feature):
+    """
+    Args:
+        :param name:
+        :param attr_output:
+        :param feature:
+    Returns:
+        predict_label nx1 [-1,1,0,-1,-1] int64
+
+    """
+    attr_logits = attr_output(name,feature)
+
+    specific_logits = attr_logits[:, 0]
+    attribute_logits = attr_logits[:, 1]
+
+    prediction = tf.where(attribute_logits > 0.5, tf.ones_like(attribute_logits), tf.zeros_like(attribute_logits))
+    prediction = tf.where(specific_logits < 0.5, -tf.ones_like(prediction), prediction)
+    predict_label = tf.to_int32(prediction, name='{}_predict'.format(name))
+
+    return predict_label
+
+
+
 
 
 # @under_name_scope()

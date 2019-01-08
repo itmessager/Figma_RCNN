@@ -81,35 +81,53 @@ def draw_tracked_people(img_bgr, tracked_people):
     return cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
 
 
-gazing_time_text = u"注视屏幕总时长:{:.1f}s"
-gazing_number_text = u"注视屏幕次数:{}"
-age_text = u"{:.1f}岁"
+
 male_text = u"男"
 female_text = u"女"
-eyeglasses_text = u"戴眼镜"
-receding_hairline_text = u"发际线高"
-smiling_text = u"笑"
+facemask_text = u"面罩"
+formal_text = u"正装"
+hat_text = u"帽子"
+jeans_text = u"牛仔裤"
+logo_text = u"标志"
+longhair_text = u"长发"
+longpants_text = u"长裤"
+longsleeve_text = u"长袖"
+shorts_text = u"短裤"
+skirt_text = u"裙子"
+stripe_text = u"条纹"
+sunglass_text = u"太阳镜"
+tshirt_text = u"T恤"
 
 
 def draw_person_attributes(draw, person, face, body):
     # Draw (semi-)static attributes as text on body bounding boxes
     xmin, ymin, xmax, ymax = body
-    text = []
-    text.append(gazing_time_text.format(person.total_gaze_time))
-    text.append(gazing_number_text.format(person.total_gaze_number))
-    text.append(male_text if person.gender == 1 else female_text)
-    if person.age is not None:
-        text.append(age_text.format(np.asscalar(person.age)))
-    if person.eyeglasses:
-        text.append(eyeglasses_text)
-    if person.receding_hairline:
-        text.append(receding_hairline_text)
-    if person.smiling:
-        text.append(smiling_text)
-    draw_text_pil(text, (xmax + 3, ymin), draw, "blue", width=1, background="white")
+    text = [female_text if person.male == 0 else male_text]
+    if person.facemask == 1:
+        text.append(facemask_text)
+    if person.formal == 1:
+        text.append(formal_text)
+    if person.hat == 1:
+        text.append(hat_text)
+    if person.jeans == 1:
+        text.append(jeans_text)
+    if person.logo == 1:
+        text.append(logo_text)
+    if person.longhair == 1:
+        text.append(longhair_text)
+    if person.longpants == 1:
+        text.append(longpants_text)
+    if person.longsleeve == 1:
+        text.append(longsleeve_text)
+    if person.shorts == 1:
+        text.append(shorts_text)
+    if person.skirt == 1:
+        text.append(skirt_text)
+    if person.stripe == 1:
+        text.append(stripe_text)
+    if person.sunglass == 1:
+        text.append(sunglass_text)
+    if person.tshirt == 1:
+        text.append(tshirt_text)
 
-    # Draw head pose
-    if face is not None:
-        xmin, ymin, xmax, ymax = face
-        draw_axis(draw, person.head_yaw, person.head_pitch, person.head_roll, tdx=(xmin + xmax) / 2,
-                    tdy=(ymin + ymax) / 2, size=(ymax - ymin) / 2)
+    draw_text_pil(text, (xmax + 3, ymin), draw, "blue", width=1, background="white")

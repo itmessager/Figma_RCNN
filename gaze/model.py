@@ -1,6 +1,6 @@
 from torch import nn
-from gaze.models import facegaze
-from gaze.models import eyegaze
+# from gaze.models import facegaze
+# from gaze.models import eyegaze
 import pretrainedmodels
 
 
@@ -20,10 +20,10 @@ def generate_model(opt, inference=False):
     else:
         mean, std = model.mean, model.std
 
-    if opt.model == 'facegaze':
-        model = facegaze.FaceGaze(model)
-    elif opt.model == 'eyegaze':
-        model = eyegaze.EyeGaze(model)
+    # if opt.model == 'facegaze':
+    #     model = facegaze.FaceGaze(model)
+    # elif opt.model == 'eyegaze':
+    #     model = eyegaze.EyeGaze(model)
     model = model.cuda()
     parameters = model.parameters()
     # parameters = {**dict(parameters), **dict(models.parameters())}

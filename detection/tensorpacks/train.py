@@ -37,7 +37,7 @@ from detection.tensorpacks.basemodel import (
 from detection.tensorpacks import model_frcnn
 from detection.tensorpacks import model_mrcnn
 from detection.tensorpacks.model_frcnn import (
-    sample_fast_rcnn_targets, fastrcnn_outputs, attr_outputs, male_losses, male_output,
+    sample_fast_rcnn_targets, fastrcnn_outputs,
     fastrcnn_predictions, BoxProposals, FastRCNNHead)
 from detection.tensorpacks.model_mrcnn import maskrcnn_upXconv_head, maskrcnn_loss
 from detection.tensorpacks.model_rpn import rpn_head, rpn_losses, generate_rpn_proposals

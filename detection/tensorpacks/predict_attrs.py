@@ -38,7 +38,7 @@ from detection.tensorpacks import model_frcnn
 from detection.tensorpacks import model_mrcnn
 from detection.tensorpacks.model_frcnn import (
     sample_fast_rcnn_targets, fastrcnn_outputs,
-    fastrcnn_predictions, BoxProposals, FastRCNNHead, attrs_head, all_attrs_losses)
+    fastrcnn_predictions, BoxProposals, FastRCNNHead, attrs_head, attrs_predict)
 from detection.tensorpacks.model_mrcnn import maskrcnn_upXconv_head, maskrcnn_loss
 from detection.tensorpacks.model_rpn import rpn_head, rpn_losses, generate_rpn_proposals
 from detection.tensorpacks.model_fpn import (
@@ -49,7 +49,7 @@ from detection.tensorpacks.model_box import (
     clip_boxes, crop_and_resize, roi_align, RPNAnchors)
 
 from detection.tensorpacks.data import (
-    get_train_dataflow, get_eval_dataflow,get_attributes_dataflow,
+    get_train_dataflow, get_eval_dataflow, get_attributes_dataflow,
     get_all_anchors, get_all_anchors_fpn)
 from detection.tensorpacks.viz import (
     draw_annotation, draw_proposal_recall,
@@ -76,22 +76,19 @@ class DetectionModel(ModelDesc):
         opt = optimizer.AccumGradOptimizer(opt, 8 // cfg.TRAIN.NUM_GPUS)  # assume cfg.TRAIN.NUM_GPUS < 8:
         return opt
 
+
 class ResNetC4Model(DetectionModel):
-    def inputs(self): # OK
+    def inputs(self):  # OK
         ret = [
             tf.placeholder(tf.float32, (None, None, 3), 'image'),
             # label of each anchor
-            tf.placeholder(tf.int32, (None, None, cfg.RPN.NUM_ANCHOR), 'anchor_labels'), # NUM_ANCHOR = 5*3
+            tf.placeholder(tf.int32, (None, None, cfg.RPN.NUM_ANCHOR), 'anchor_labels'),  # NUM_ANCHOR = 5*3
             # box of each anchor
             tf.placeholder(tf.float32, (None, None, cfg.RPN.NUM_ANCHOR, 4), 'anchor_boxes'),
             # box of each ground truth
             tf.placeholder(tf.float32, (None, 4), 'gt_boxes')]
-            # label of each ground truth
-            #tf.placeholder(tf.int64, (None,), 'gt_labels'), # all > 0
-
-            # mask of each ground truth
-            #tf.placeholder(tf.uint8, (None, None, None), 'gt_masks')]# NR_GT x height x width
-
+        # label of each ground truth
+        # tf.placeholder(tf.int64, (None,), 'gt_labels'), # all > 0
         return ret
 
     def build_graph(self, *inputs):
@@ -117,19 +114,20 @@ class ResNetC4Model(DetectionModel):
             tf.reshape(pred_boxes_decoded, [-1, 4]),
             tf.reshape(rpn_label_logits, [-1]),
             image_shape2d,
-            cfg.RPN.TEST_PRE_NMS_TOPK,    # 2000
+            cfg.RPN.TEST_PRE_NMS_TOPK,  # 2000
             cfg.RPN.TEST_POST_NMS_TOPK)  # 1000
 
-        boxes_on_featuremap = proposal_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE) # ANCHOR_STRIDE = 16
+        boxes_on_featuremap = proposal_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
 
         # ROI_align
-        roi_resized = roi_align(featuremap, boxes_on_featuremap, 14)   #14x14 for each roi
+        roi_resized = roi_align(featuremap, boxes_on_featuremap, 14)  # 14x14 for each roi
 
-        feature_fastrcnn = resnet_conv5(roi_resized, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
+        feature_fastrcnn = resnet_conv5(roi_resized,
+                                        cfg.BACKBONE.RESNET_NUM_BLOCK[-1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
         # Keep C5 feature to be shared with mask branch
-        feature_gap = GlobalAvgPooling('gap', feature_fastrcnn, data_format='channels_first') # ??
+        feature_gap = GlobalAvgPooling('gap', feature_fastrcnn, data_format='channels_first')  # ??
 
-        fastrcnn_label_logits, fastrcnn_box_logits = fastrcnn_outputs('fastrcnn', feature_gap, cfg.DATA.NUM_CLASS) # ??
+        fastrcnn_label_logits, fastrcnn_box_logits = fastrcnn_outputs('fastrcnn', feature_gap, cfg.DATA.NUM_CLASS)  # ??
         # Returns:
         # cls_logits: Tensor("fastrcnn/class/output:0", shape=(n, 81), dtype=float32)
         # reg_logits: Tensor("fastrcnn/output_box:0", shape=(n, 81, 4), dtype=float32)
@@ -138,9 +136,8 @@ class ResNetC4Model(DetectionModel):
         fastrcnn_head = FastRCNNHead(proposal_boxes, fastrcnn_box_logits, fastrcnn_label_logits,  #
                                      tf.constant(cfg.FRCNN.BBOX_REG_WEIGHTS, dtype=tf.float32))  # [10., 10., 5., 5.]
 
-        decoded_boxes = fastrcnn_head.decoded_output_boxes() # pre_boxes_on_images
+        decoded_boxes = fastrcnn_head.decoded_output_boxes()  # pre_boxes_on_images
         decoded_boxes = clip_boxes(decoded_boxes, image_shape2d, name='fastrcnn_all_boxes')
-
 
         label_scores = tf.nn.softmax(fastrcnn_label_logits, name='fastrcnn_all_scores')
         # class scores, summed to one for each box.
@@ -167,11 +164,11 @@ class ResNetC4Model(DetectionModel):
                                          cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
 
             feature_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  # ??
-            attrs_logits = attrs_head('attrs', feature_gap)
-            print("hello")
+            #attrs_logits = attrs_head('attrs', feature_gap)
+            attrs_labels = attrs_predict(feature_gap)
 
         else:
-            boxes_on_featuremap =  final_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
+            boxes_on_featuremap = final_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
             roi_resized = roi_align(featuremap, boxes_on_featuremap, 14)
             feature_attrs = resnet_conv5(roi_resized,
                                          cfg.BACKBONE.RESNET_NUM_BLOCK[-1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
@@ -182,7 +179,6 @@ class ResNetC4Model(DetectionModel):
 
 
 def predict(pred_func, input_file):
-
     img = cv2.imread(input_file, cv2.IMREAD_COLOR)
     results = detect_one_image(img, pred_func)
     final = draw_final_outputs(img, results)  # image contain boxes,labels and scores
@@ -199,7 +195,6 @@ if __name__ == '__main__':
     parser.add_argument('--config', help="A list of KEY=VALUE to overwrite those defined in tensorpack_config.py",
                         nargs='+')
 
-
     args = parser.parse_args()
     if args.config:
         cfg.update_args(args.config)
@@ -213,16 +208,15 @@ if __name__ == '__main__':
         # can't input the dataflow ?
         pred = OfflinePredictor(PredictConfig(
             model=MODEL,  # model
-            session_init=get_model_loader(args.load), # weight
+            session_init=get_model_loader(args.load),  # weight
             input_names=['image'],
             output_names=['output/boxes', 'output/scores', 'output/labels', 'output/masks',
-                          'attrs/male/output', 'attrs/longhair/output', 'attrs/sunglass/output',
-                          'attrs/hat/output', 'attrs/tshirt/output', 'attrs/longsleeve/output',
-                          'attrs/formal/output', 'attrs/shorts/output', 'attrs/jeans/output',
-                          'attrs/skirt/output', 'attrs/facemask/output', 'attrs/logo/output',
-                          'attrs/stripe/output', 'attrs/longpants/output'
+                          'male_predict', 'longhair_predict', 'sunglass_predict',
+                          'hat_predict', 'tshirt_predict', 'longsleeve_predict',
+                          'formal_predict', 'shorts_predict', 'jeans_predict',
+                          'skirt_predict', 'facemask_predict', 'logo_predict',
+                          'stripe_predict', 'longpants_predict'
                           ]))
 
-        COCODetection(cfg.DATA.BASEDIR,'val2014')  # load the class names into cfg.DATA.CLASS_NAMES
-        predict(pred, args.predict) # contain vislizaiton
-
+        COCODetection(cfg.DATA.BASEDIR, 'val2014')  # load the class names into cfg.DATA.CLASS_NAMES
+        predict(pred, args.predict)  # contain vislizaiton

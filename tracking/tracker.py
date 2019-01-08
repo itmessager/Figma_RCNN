@@ -3,7 +3,7 @@ from collections import namedtuple
 
 import numpy as np
 
-from detection.core.detector import DetectionResult
+from detection.core.detector import DetectionResult, DetectionFaceResult
 from tracking.matching_face_to_person import matching
 from tracking.sort import Sort
 
@@ -39,7 +39,7 @@ class PersonTracker:
         assert isinstance(face_results, list)
         assert isinstance(body_results, list)
         for r in face_results:
-            assert isinstance(r, DetectionResult)
+            assert isinstance(r, DetectionFaceResult)
         for r in body_results:
             assert isinstance(r, DetectionResult)
 

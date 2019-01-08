@@ -73,12 +73,21 @@ def detect_one_image(img, model_func):
     full_masks = [fill_full_mask(box, mask, orig_shape)
                   for box, mask in zip(boxes, masks)]
     masks = full_masks
+
+
+
+
+
     # else:
     #     # fill with none
     #     masks = [None] * len(boxes)
-    results_tuple = (boxes, probs, labels, masks) + tuple(attrs)
+    # results_tuple = [(boxes, probs, labels, masks) + tuple(attrs)]
     #  there is a bug 2019.1.4
-    results = [DetectionResult(*args) for args in zip(results_tuple)]
+    results = [DetectionResult(*args) for args in zip(boxes, probs, labels, masks,
+                                                      attrs[0], attrs[1], attrs[2], attrs[3],
+                                                      attrs[4], attrs[5], attrs[6], attrs[7],
+                                                      attrs[8], attrs[9], attrs[10], attrs[11],
+                                                      attrs[12], attrs[13])]
     return results
 
 
