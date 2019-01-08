@@ -471,7 +471,9 @@ def get_attributes_dataflow():
 
         ret = {'image': im, 'gt_boxes': boxes, 'male': male, 'longhair': longhair, 'sunglass': sunglass, 'hat': hat,
                'tshirt': tshirt, 'longsleeve': longsleeve, 'formal': formal, 'shorts': shorts, 'jeans': jeans,
-               'longpants': longpants, 'skirt': skirt, 'facemask': facemask, 'logo': logo, 'stripe': stripe}
+               'longpants': longpants, 'skirt': skirt, 'facemask': facemask, 'logo': logo, 'stripe': stripe,
+               'anchor_labels': get_rpn_anchor_input(im, boxes, np.zeros(len(boxes),dtype=int))[0],
+               'anchor_boxes': get_rpn_anchor_input(im, boxes, np.zeros(len(boxes),dtype=int))[1]}
         return ret
 
     if cfg.TRAINER == 'horovod':

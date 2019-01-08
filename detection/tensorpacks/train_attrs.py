@@ -15,6 +15,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 
 from detection.tensorpacks.model_mrcnn import maskrcnn_upXconv_head
+from detection.tensorpacks.model_rpn import rpn_head, generate_rpn_proposals
 
 try:
     import horovod.tensorflow as hvd
@@ -73,6 +74,10 @@ class ResNetC4Model(DetectionModel):
             tf.placeholder(tf.float32, (None, None, 3), 'image'),
             # box of each ground truth
             tf.placeholder(tf.float32, (None, 4), 'gt_boxes'),
+            # label of each anchor
+            tf.placeholder(tf.int32, (None, None, cfg.RPN.NUM_ANCHOR), 'anchor_labels'),  # NUM_ANCHOR = 5*3
+            # box of each anchor
+            tf.placeholder(tf.float32, (None, None, cfg.RPN.NUM_ANCHOR, 4), 'anchor_boxes'),
             # male_labels of each ground truth
             tf.placeholder(tf.int64, (None,), 'male'),
             # longhair_labels of each ground truth
@@ -112,8 +117,55 @@ class ResNetC4Model(DetectionModel):
             # build resnet c4
             featuremap = resnet_c4_backbone(image, cfg.BACKBONE.RESNET_NUM_BLOCK[:3])
             # predict attrs b
+
+            rpn_label_logits, rpn_box_logits = rpn_head('rpn', featuremap, cfg.RPN.HEAD_DIM, cfg.RPN.NUM_ANCHOR)
+            # HEAD_DIM = 1024, NUM_ANCHOR = 15
+            # rpn_label_logits: fHxfWxNA
+            # rpn_box_logits: fHxfWxNAx4
+            anchors = RPNAnchors(get_all_anchors(), inputs['anchor_labels'], inputs['anchor_boxes'])
+            # anchor_boxes is Groundtruth boxes corresponding to each anchor
+            anchors = anchors.narrow_to(featuremap)  # ??
+            image_shape2d = tf.shape(image)[2:]  # h,w
+            pred_boxes_decoded = anchors.decode_logits(rpn_box_logits)  # fHxfWxNAx4, floatbox
+
+            # ProposalCreator (get the topk proposals)
+            proposal_boxes, proposal_scores = generate_rpn_proposals(
+                tf.reshape(pred_boxes_decoded, [-1, 4]),
+                tf.reshape(rpn_label_logits, [-1]),
+                image_shape2d,
+                cfg.RPN.TEST_PRE_NMS_TOPK,  # 2000
+                cfg.RPN.TEST_POST_NMS_TOPK)  # 1000
+
             boxes_on_featuremap = inputs['gt_boxes'] * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
             roi_resized = roi_align(featuremap, boxes_on_featuremap, 14)
+
+            feature_fastrcnn = resnet_conv5(roi_resized,
+                                            cfg.BACKBONE.RESNET_NUM_BLOCK[
+                                                -1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
+            # Keep C5 feature to be shared with mask branch
+            feature_gap = GlobalAvgPooling('gap', feature_fastrcnn, data_format='channels_first')  # ??
+
+            fastrcnn_label_logits, fastrcnn_box_logits = fastrcnn_outputs('fastrcnn', feature_gap,
+                                                                          cfg.DATA.NUM_CLASS)  # ??
+            # Returns:
+            # cls_logits: Tensor("fastrcnn/class/output:0", shape=(n, 81), dtype=float32)
+            # reg_logits: Tensor("fastrcnn/output_box:0", shape=(n, 81, 4), dtype=float32)
+
+            # ------------------Fastrcnn_Head------------------------
+            fastrcnn_head = FastRCNNHead(proposal_boxes, fastrcnn_box_logits, fastrcnn_label_logits,  #
+                                         tf.constant(cfg.FRCNN.BBOX_REG_WEIGHTS,
+                                                     dtype=tf.float32))  # [10., 10., 5., 5.]
+
+            decoded_boxes = fastrcnn_head.decoded_output_boxes()  # pre_boxes_on_images
+            decoded_boxes = clip_boxes(decoded_boxes, image_shape2d, name='fastrcnn_all_boxes')
+
+            label_scores = tf.nn.softmax(fastrcnn_label_logits, name='fastrcnn_all_scores')
+            # class scores, summed to one for each box.
+
+            final_boxes, final_scores, final_labels = fastrcnn_predictions(
+                decoded_boxes, label_scores, name_scope='output')
+
+
             feature_maskrcnn = resnet_conv5(roi_resized,
                                             cfg.BACKBONE.RESNET_NUM_BLOCK[
                                                 -1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
@@ -128,7 +180,7 @@ class ResNetC4Model(DetectionModel):
             final_mask_logits_expand = tf.expand_dims(final_mask_logits, axis=1)
             final_mask_logits_tile = tf.tile(final_mask_logits_expand, multiples=[1, 1024, 1, 1])
             fg_mask_roi_resized = tf.where(final_mask_logits_tile >= 0.5, roi_resized,
-                                           roi_resized * 0.0)
+                                           roi_resized * 1.0)
             feature_attrs = resnet_conv5(fg_mask_roi_resized,
                                          cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
 
