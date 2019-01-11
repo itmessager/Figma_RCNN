@@ -12,13 +12,15 @@ from attributer.attributer import PersonAttrs
 from utils.viz_utils import draw_tracked_people, draw_person_attributes
 
 
-def run(init_models, process_func, args, cam=None, video=None):
+def run(init_models, process_func, args, cam=None, video=None, image=None):
     if cam:
         # Read camera
         cap = cv2.VideoCapture(0)
     elif video:
         # Read video
         cap = cv2.VideoCapture(video)
+    elif image:
+        cap = cv2.VideoCapture(image)
     else:
         raise Exception("Either cam or video need to be specified as input")
 
@@ -46,10 +48,12 @@ def run(init_models, process_func, args, cam=None, video=None):
 
         if img_to_show is not None:
             cv2.imshow('video', img_to_show)
-            k = cv2.waitKey(1)
-            if k == 27:  # Esc key to stop
-                break
-
+            if image:
+                cv2.waitKey(0)
+            elif video or cam:
+                k = cv2.waitKey(1)
+                if k == 27:  # Esc key to stop
+                    break
 
 # generate models
 def init_models(args, width, height):
@@ -93,6 +97,11 @@ if __name__ == "__main__":
         type=str,
         help="Run prediction on a given video. "
              "This argument is the path to the input video file")
+    parser.add_argument(
+        '--image',
+        type=str,
+        help="Run prediction on a given image. "
+             "This argument is the path to the input image file")
     parser.add_argument(
         '--cam',
         type=int,
@@ -144,4 +153,4 @@ if __name__ == "__main__":
         '--pretrain', action='store_true', help='Whether to use pretrained weights in conv models')
     args = parser.parse_args()
 
-    run(init_models, process_detector_func, args, args.cam, args.video)
+    run(init_models, process_detector_func, args, args.cam, args.video,args.image)
