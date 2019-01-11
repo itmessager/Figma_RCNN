@@ -135,8 +135,9 @@ class ResNetC4Model(DetectionModel):
                 image_shape2d,
                 cfg.RPN.TEST_PRE_NMS_TOPK,  # 2000
                 cfg.RPN.TEST_POST_NMS_TOPK)  # 1000
-
-            boxes_on_featuremap = inputs['gt_boxes'] * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
+            x, y, w, h = tf.split(inputs['gt_boxes'], 4, axis=1)
+            gt_boxes = tf.concat([x, y, x + w, y + h], axis=1)
+            boxes_on_featuremap = gt_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
             roi_resized = roi_align(featuremap, boxes_on_featuremap, 14)
 
             feature_fastrcnn = resnet_conv5(roi_resized,
@@ -206,7 +207,9 @@ class ResNetC4Model(DetectionModel):
             # build resnet c4
             featuremap = resnet_c4_backbone(image, cfg.BACKBONE.RESNET_NUM_BLOCK[:3])
             # predict attrs b
-            boxes_on_featuremap = inputs['gt_boxes'] * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
+            x, y, w, h = tf.split(inputs['gt_boxes'], 4, axis=1)
+            gt_boxes = tf.concat([x, y, x + w, y + h], axis=1)
+            boxes_on_featuremap = gt_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
             roi_resized = roi_align(featuremap, boxes_on_featuremap, 14)
             feature_attrs = resnet_conv5(roi_resized,
                                          cfg.BACKBONE.RESNET_NUM_BLOCK[-1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
