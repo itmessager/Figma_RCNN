@@ -1,3 +1,10 @@
+"""
+-1  unspecified
+ 0  negative
+ 1  positive
+ bbox: xmin, ymin, width, height
+"""
+
 import os
 import json
 import numpy as np
@@ -41,16 +48,6 @@ def make_dataset(root, subset):
                     if person['attribute'][i] != 1:
                         # -1 => 0  1=> 1  0=>-1
                         sample[attr] = np.abs(person['attribute'][i]) - 1
-                    # if person['attribute'][i] != 0:  #
-                    #     # -1 => 0  1=> 1
-                    #     sample[attr] = int((person['attribute'][i] + 1) / 2)
-                    #     recognizability[attr] = 1
-                    # else:  # Attribute is unrecognizable
-                    #     # Treat attribute is available only if recognizability is considered
-                    #     if self.output_recognizable:
-                    #         sample[attr] = -10  # Dummy value
-                    #         recognizability[attr] = 0
-
                 data.append(sample)
                 a += 1
     return data
@@ -91,6 +88,7 @@ def load_many(basedir, names):
         img_attr_list.append(img_attr)
 
     return img_attr_list
+
 
 if __name__ == '__main__':
     roidbs = load_many('/root/datasets/wider attribute', 'train')

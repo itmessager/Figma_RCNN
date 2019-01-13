@@ -56,12 +56,15 @@ from detection.tensorpacks.eval import (
     eval_coco, print_evaluation_scores, DetectionResult, fill_full_mask)
 from detection.config.tensorpack_config import finalize_configs, config as cfg
 
+from detection.visualization.vis_boxes_on_image import vis_one_image
+
 
 class DetectionModel(ModelDesc):
     def preprocess(self, image):
         image = tf.expand_dims(image, 0)
         image = image_preprocess(image, bgr=True)
         return tf.transpose(image, [0, 3, 1, 2])
+
 
 class ResNetC4Model(DetectionModel):
     def inputs(self):  # OK
@@ -78,11 +81,36 @@ class ResNetC4Model(DetectionModel):
     def build_graph(self, *inputs):
         inputs = dict(zip(self.input_names, inputs))
         image = self.preprocess(inputs['image'])  # 1CHW
+        featuremap = resnet_c4_backbone(image, cfg.BACKBONE.RESNET_NUM_BLOCK[:3])
+        # rpn_label_logits, rpn_box_logits = rpn_head('rpn', featuremap, cfg.RPN.HEAD_DIM, cfg.RPN.NUM_ANCHOR)
+        # # HEAD_DIM = 1024, NUM_ANCHOR = 15
+        # # rpn_label_logits: fHxfWxNA
+        # # rpn_box_logits: fHxfWxNAx4
+        # anchors = RPNAnchors(get_all_anchors(), inputs['anchor_labels'], inputs['anchor_boxes'])
+        # # anchor_boxes is Groundtruth boxes corresponding to each anchor
+        # anchors = anchors.narrow_to(featuremap)  # ??
+        # image_shape2d = tf.shape(image)[2:]  # h,w
+        # pred_boxes_decoded = anchors.decode_logits(rpn_box_logits)  # fHxfWxNAx4, floatbox
+        #
+        # # ProposalCreator (get the topk proposals)
+        # proposal_boxes, proposal_scores = generate_rpn_proposals(
+        #     tf.reshape(pred_boxes_decoded, [-1, 4]),
+        #     tf.reshape(rpn_label_logits, [-1]),
+        #     image_shape2d,
+        #     cfg.RPN.TEST_PRE_NMS_TOPK,  # 2000
+        #     cfg.RPN.TEST_POST_NMS_TOPK)  # 1000
+
+
+
+
+
+
 
         # build resnet c4
-        featuremap = resnet_c4_backbone(image, cfg.BACKBONE.RESNET_NUM_BLOCK[:3])
 
-        boxes_on_featuremap = inputs['gt_boxes'] * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
+        x, y, w, h = tf.split(inputs['gt_boxes'], 4, axis=1)
+        gt_boxes = tf.concat([x, y, x + w, y + h], axis=1)
+        boxes_on_featuremap = gt_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
 
         # ROI_align
         roi_resized = roi_align(featuremap, boxes_on_featuremap, 14)  # 14x14 for each roi
@@ -91,27 +119,27 @@ class ResNetC4Model(DetectionModel):
                                         cfg.BACKBONE.RESNET_NUM_BLOCK[-1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
         # Keep C5 feature to be shared with mask branch
 
+
+
+
+
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--load', help='load a model for evaluation. Can overwrite BACKBONE.WEIGHTS')
-
-    args = parser.parse_args()
-
     MODEL = ResNetC4Model()
 
     pred = OfflinePredictor(PredictConfig(
         model=MODEL,  # model
-        session_init=get_model_loader(args.load),  # weight
+        session_init=get_model_loader('/root/datasets/COCO-R50C4-MaskRCNN-Standard.npz'),  # weight
         input_names=['image', 'gt_boxes'],
-        output_names=['image','gt_boxes','mul','group2/block5/output'
+        output_names=['image', 'gt_boxes'
                       ]))
+    img = cv2.imread('/root/datasets/wider attribute/train/1--Handshaking/1_Handshaking_Handshaking_1_765.jpg')
+    boxes = np.array([(93.06605, 121.849365, 380.8992, 593.8957),
+                      (477.803, 86.349945, 476.84357, 634.1923)])
 
-    img = cv2.imread('/root/datasets/wider attribute'
-                     '/train/50--Celebration_Or_Party/'
-                     '50_Celebration_Or_Party_houseparty_50_985.jpg')
-    boxes = np.array([(685.53906,1066.394,157.42007,289.44983),(766.71625,1099.9194,153.01115,265.08054),
-     (879.69763,1125.4299,139.75713,235.0632),(865.3703 ,376.64493,131.95422,201.4785),
-    (348.02548,1084.0994,149.65096,205.33504)])
+    prediction = pred(img, boxes)
 
-    prediction = pred(img,boxes)[0]
-    # cv2.imwrite('applied_default.jpg', prediction[0])
+    img = (prediction[3].transpose(0, 2, 3, 1)[0][:, :, 1:1024:500]*100).astype(np.uint8)
+    vis_one_image(img, prediction[2],16)
+    #
+    # img = prediction[0].astype(np.uint8)
+    # vis_one_image(img, prediction[1])

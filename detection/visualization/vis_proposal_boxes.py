@@ -58,6 +58,7 @@ from detection.tensorpacks.eval import (
     eval_coco, detect_one_image, print_evaluation_scores, DetectionResult)
 from detection.config.tensorpack_config import finalize_configs, config as cfg
 
+from detection.visualization.vis_boxes_on_image import vis_one_image
 
 class DetectionModel(ModelDesc):
     def preprocess(self, image):
@@ -178,19 +179,11 @@ class ResNetC4Model(DetectionModel):
             attrs_logits = attrs_head('attrs', feature_gap)
 
 
-def predict(pred_func, input_file):
-    img = cv2.imread(input_file, cv2.IMREAD_COLOR)
-    results = detect_one_image(img, pred_func)
-    final = draw_final_outputs(img, results)  # image contain boxes,labels and scores
-    viz = np.concatenate((img, final), axis=1)
-    tpviz.interactive_imshow(viz)
+
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--load', help='load a model for evaluation. Can overwrite BACKBONE.WEIGHTS')
-    parser.add_argument('--predict', help="Run prediction on a given image. "
-                                          "This argument is the path to the input image file")
     parser.add_argument('--config', help="A list of KEY=VALUE to overwrite those defined in tensorpack_config.py",
                         nargs='+')
 
@@ -199,28 +192,28 @@ if __name__ == '__main__':
         cfg.update_args(args.config)
 
     MODEL = ResNetC4Model()
+    finalize_configs(is_training=False)
 
-    if args.predict:
-        assert args.load
-        finalize_configs(is_training=False)
+    # can't input the dataflow ?
+    pred = OfflinePredictor(PredictConfig(
+        model=MODEL,  # model
+        session_init=get_model_loader('/root/datasets/COCO-R50C4-MaskRCNN-Standard.npz'),  # weight
+        input_names=['image'],
+        output_names=['output/boxes', 'output/scores', 'output/labels', 'output/masks'
+                      ]))
 
-        # can't input the dataflow ?
-        pred = OfflinePredictor(PredictConfig(
-            model=MODEL,  # model
-            session_init=get_model_loader(args.load),  # weight
-            input_names=['image'],
-            output_names=['output/boxes', 'output/scores', 'output/labels', 'output/masks',
-                          'male_predict', 'longhair_predict', 'sunglass_predict',
-                          'hat_predict', 'tshirt_predict', 'longsleeve_predict',
-                          'formal_predict', 'shorts_predict', 'jeans_predict',
-                          'skirt_predict', 'facemask_predict', 'logo_predict',
-                          'stripe_predict', 'longpants_predict'
-                          ]))
+    COCODetection(cfg.DATA.BASEDIR, 'val2014')  # load the class names into cfg.DATA.CLASS_NAMES
 
-        COCODetection(cfg.DATA.BASEDIR, 'val2014')  # load the class names into cfg.DATA.CLASS_NAMES
-        predict(pred, args.predict)  # contain vislizaiton
+    img = cv2.imread('/root/datasets/wider attribute/train/1--Handshaking/1_Handshaking_Handshaking_1_765.jpg'
+                     , cv2.IMREAD_COLOR)
+
+    boxes, probs, labels, masks = pred(img)
+    #results = detect_one_image(img, pred)
+
+    vis_one_image(img,boxes,box_format='x1y1x2y2')
 
 '''
+
 --config
 DATA.BASEDIR=/root/datasets/COCO/DIR
 --predict
