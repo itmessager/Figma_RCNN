@@ -122,7 +122,7 @@ def attrs_head(name, feature):
                         'formal': attr_output('formal', feature), 'shorts': attr_output('shorts', feature),
                         'jeans': attr_output('jeans', feature), 'skirt': attr_output('skirt', feature),
                         'facemask': attr_output('facemask', feature), 'logo': attr_output('logo', feature),
-                        'stripe': attr_output('stripe', feature),'longpants': attr_output('longpants', feature)}
+                        'stripe': attr_output('stripe', feature), 'longpants': attr_output('longpants', feature)}
 
         return attrs_logits
 
@@ -153,40 +153,40 @@ def attrs_predict(feature):
         A Dict
         attribute name: attribute logits
     """
-    attrs_logits = [logits_to_predict('male', feature), logits_to_predict('longhair', feature),
-                    logits_to_predict('sunglass', feature), logits_to_predict('hat', feature),
-                    logits_to_predict('tshirt', feature), logits_to_predict('longsleeve', feature),
-                    logits_to_predict('formal', feature), logits_to_predict('shorts', feature),
-                    logits_to_predict('jeans', feature), logits_to_predict('skirt', feature),
-                    logits_to_predict('facemask', feature), logits_to_predict('logo', feature),
-                    logits_to_predict('stripe', feature),logits_to_predict('longpants', feature)]
+    attrs_logits = [logits_to_predict(attr_output('male', feature)),
+                    logits_to_predict(attr_output('longhair', feature)),
+                    logits_to_predict(attr_output('sunglass', feature)),
+                    logits_to_predict(attr_output('hat', feature)),
+                    logits_to_predict(attr_output('tshirt', feature)),
+                    logits_to_predict(attr_output('longsleeve', feature)),
+                    logits_to_predict(attr_output('formal', feature)),
+                    logits_to_predict(attr_output('shorts', feature)),
+                    logits_to_predict(attr_output('jeans', feature)),
+                    logits_to_predict(attr_output('skirt', feature)),
+                    logits_to_predict(attr_output('facemask', feature)),
+                    logits_to_predict(attr_output('logo', feature)),
+                    logits_to_predict(attr_output('stripe', feature)),
+                    logits_to_predict(attr_output('longpants', feature))]
 
     return attrs_logits
 
 
-def logits_to_predict(name, feature):
+def logits_to_predict(attr_logits):
     """
     Args:
-        :param name:
-        :param attr_output:
-        :param feature:
+        :param attr_logits:
     Returns:
         predict_label nx1 [-1,1,0,-1,-1] int64
 
     """
-    attr_logits = attr_output(name,feature)
-
     specific_logits = attr_logits[:, 0]
     attribute_logits = attr_logits[:, 1]
 
     prediction = tf.where(attribute_logits > 0.5, tf.ones_like(attribute_logits), tf.zeros_like(attribute_logits))
     prediction = tf.where(specific_logits < 0.5, -tf.ones_like(prediction), prediction)
-    predict_label = tf.to_int32(prediction, name='{}_predict'.format(name))
+    predict_label = tf.to_int32(prediction)
 
     return predict_label
-
-
-
 
 
 # @under_name_scope()
@@ -278,15 +278,14 @@ def attr_losses(attr_name, labels, logits):
     loss_sum = tf.add_n([attr_loss_sum, specific_loss_mean], name='{}_loss'.format(attr_name))
 
     with tf.name_scope('{}_metrics'.format(attr_name)), tf.device('/cpu:0'):
-        prediction = tf.where(attribute_logits > 0.5, tf.ones_like(attribute_logits), tf.zeros_like(attribute_logits))
-        prediction = tf.where(specific_logits < 0.5, -tf.ones_like(prediction), prediction)
-        prediction = tf.to_int64(prediction, name='{}_prediction'.format(attr_name))
-        correct = tf.to_float(tf.equal(prediction, labels))  # boolean/integer gather is unavailable on GPU
-        accuracy = tf.reduce_mean(correct, name='{}_accuracy'.format(attr_name))
+        prediction = logits_to_predict(logits)
+        accuracy = tf.metrics.accuracy(labels=labels, predictions=prediction, )[1]
+        accuracy = tf.identity(accuracy, name='{}_accuracy'.format(attr_name))
 
     add_moving_summary(loss_sum, accuracy)
 
     return loss_sum
+
 
 @layer_register(log_shape=True)
 def fastrcnn_outputs(feature, num_classes, class_agnostic_regression=False):

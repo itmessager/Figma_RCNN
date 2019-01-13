@@ -199,6 +199,7 @@ class ResNetC4Model(DetectionModel):
             total_cost = tf.add_n(all_losses, 'total_cost')
 
             add_moving_summary(wd_cost, total_cost)
+            print('OK')
             return total_cost
 
         else:

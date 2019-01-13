@@ -12,7 +12,7 @@ import numpy as np
 import tensorflow as tf
 
 #males =tf.constant(np.array([-1, 1, 1, 1, -1, 1, -1, -1, 1, 1]))
-males =tf.constant(np.array([-1, 1, -1, 1, 0, -1, 1, 0, 1, -1]))
+males =tf.constant(np.array([-1, 1, -1, 1, 1, -1, 1, 0, 1, -1]))
 male_logits = tf.constant(np.array([(0.44, 0.51), (0.72, 0.58), (0.16, 0.84), (0.77, 0.83), (0.51, 0.49),
                                     (0.4, 0.4), (0.72, 0.58), (0.84, 0.16), (0.77, 0.83), (0.49, 0.51)]
                                   ,dtype='float32'))
@@ -49,14 +49,18 @@ def attr_losses(male_labels, male_logits):
 
         correct = tf.to_float(tf.equal(prediction, male_labels))  # boolean/integer gather is unavailable on GPU
         # expend dim to prevent divide by zero
-        accuracy = tf.reduce_mean(correct, name='accuracy')
-
-    return valid_inds, prediction, male_labels, male_loss,specific_loss_mean
+        accuracy1 = tf.reduce_mean(correct, name='accuracy')
+        accuracy2 = tf.metrics.average_precision_at_k(labels=male_labels, predictions=prediction,k=4)[1]
+    return valid_inds, prediction, male_labels, male_loss,specific_loss_mean,accuracy1,accuracy2,tf.shape(prediction)[0]
 
 
 if __name__=='__main__':
     some_var = attr_losses(males, male_logits)
     sess = tf.Session()
+    # init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
+    # sess.run(init_op)  # initialize v
+    sess.run(tf.local_variables_initializer())
     some_var = sess.run(some_var)
+
 
     print(some_var)
