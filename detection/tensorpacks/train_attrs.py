@@ -340,7 +340,7 @@ if __name__ == '__main__':
         logger.set_logger_dir(args.logdir, 'd')
 
     finalize_configs(is_training=True)
-    stepnum = cfg.TRAIN.STEPS_PER_EPOCH  # STEPS_PER_EPOCH = 500
+    stepnum = cfg.TRAIN.STEPS_PER_EPOCH  # STEPS_PER_EPOCH = 5000
     # warmup is step based, lr is epoch based
     init_lr = cfg.TRAIN.BASE_LR * 0.33 * min(8. / cfg.TRAIN.NUM_GPUS, 1.)
     warmup_schedule = [(0, init_lr), (cfg.TRAIN.WARMUP, cfg.TRAIN.BASE_LR)]
@@ -358,7 +358,7 @@ if __name__ == '__main__':
 
     train_attrs_dataflow = get_attributes_dataflow()  # get the wider datasets
     # This is what's commonly referred to as "epochs"
-    total_passes = cfg.TRAIN.LR_SCHEDULE[-1] * 8 / train_attrs_dataflow.size()
+    total_passes = cfg.TRAIN.LR_SCHEDULE[-1] * factor / train_attrs_dataflow.size()
     logger.info("Total passes of the training set is: {}".format(total_passes))
     callbacks = [
         PeriodicCallback(

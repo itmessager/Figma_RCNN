@@ -67,23 +67,24 @@ def draw_tracked_people(img_bgr, tracked_people):
         color = STANDARD_COLORS[person.id % len(STANDARD_COLORS)]
         if person.body_box is not None:
             xmin, ymin, xmax, ymax = person.body_box
-            draw_bounding_box_on_image_array(img_rgb, ymin, xmin, ymax, xmax, color=color,
-                                             display_str_list=['ID:{}  Score:{:.2f}'.format(person.id, person.body_score)],
+            draw_bounding_box_on_image_array(img_rgb, ymin, xmin, ymax, xmax, color=color, thickness=2,
+                                             display_str_list=[
+                                                 'ID:{}  Score:{:.2f}'.format(person.id, person.body_score)],
                                              use_normalized_coordinates=False)
-        if person.face_box is not None:
-            xmin, ymin, xmax, ymax = person.face_box
-            draw_bounding_box_on_image_array(img_rgb, ymin, xmin, ymax, xmax, color=color,
-                                             display_str_list=['Score:{:.2f}'.format(person.face_score)],
-                                             use_normalized_coordinates=False)
+        # if person.face_box is not None:
+        #     xmin, ymin, xmax, ymax = person.face_box
+        #     draw_bounding_box_on_image_array(img_rgb, ymin, xmin, ymax, xmax, color=color, thickness=2,
+        #                                      display_str_list=['Score:{:.2f}'.format(person.face_score)],
+        #                                      use_normalized_coordinates=False)
         if person.body_mask is not None:
             draw_mask_on_image_array(img_rgb, person.body_mask, color=color)
 
     return cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
 
 
-
 male_text = u"男"
 female_text = u"女"
+unspecified_text = u"性别不确定"
 facemask_text = u"面罩"
 formal_text = u"正装"
 hat_text = u"帽子"
@@ -99,10 +100,19 @@ sunglass_text = u"太阳镜"
 tshirt_text = u"T恤"
 
 
+def label_to_text(label):
+    if label == 1:
+        return male_text
+    elif label == 0:
+        return female_text
+    else:
+        return unspecified_text
+
+
 def draw_person_attributes(draw, person, face, body):
     # Draw (semi-)static attributes as text on body bounding boxes
     xmin, ymin, xmax, ymax = body
-    text = [female_text if person.male == 0 else male_text]
+    text = [label_to_text(person.male)]
     if person.facemask == 1:
         text.append(facemask_text)
     if person.formal == 1:

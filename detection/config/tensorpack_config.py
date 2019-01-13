@@ -49,12 +49,12 @@ _C.TRAIN.NUM_GPUS = None         # by default, will be set from code
 _C.TRAIN.WEIGHT_DECAY = 1e-4
 _C.TRAIN.BASE_LR = 1e-2  # defined for a total batch size of 8. Otherwise it will be adjusted automatically
 _C.TRAIN.WARMUP = 1000   # in terms of iterations. This is not affected by #GPUs
-_C.TRAIN.STEPS_PER_EPOCH = 500
+_C.TRAIN.STEPS_PER_EPOCH = 5000
 
 # LR_SCHEDULE means "steps" only when total batch size is 8.
 # Otherwise the actual steps to decrease learning rate are computed from the schedule.
 # Therefore, there is *no need* to modify the config if you only change tdhe number of GPUs.
-_C.TRAIN.LR_SCHEDULE = [4000, 160000, 200000]  # "1x" schedule in detectron
+_C.TRAIN.LR_SCHEDULE = [4000, 160000, 240000]  # "1x" schedule in detectron
 # _C.TRAIN.LR_SCHEDULE = [240000, 320000, 360000]    # "2x" schedule in detectron
 _C.TRAIN.NUM_EVALS = 20  # number of evaluations to run during training
 
