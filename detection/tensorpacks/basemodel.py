@@ -185,6 +185,12 @@ def resnet_conv5(image, num_block):
             return l
 
 
+# another c5 block for attr respective
+def resnet_conv5_attr(image, num_block):
+    with backbone_scope(freeze=False):
+        l = resnet_group('group3_attr', image, resnet_bottleneck, 512, num_block, 2)
+        return l
+
 def resnet_fpn_backbone(image, num_blocks):
     freeze_at = cfg.BACKBONE.FREEZE_AT
     shape2d = tf.shape(image)[2:]
