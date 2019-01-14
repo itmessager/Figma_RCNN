@@ -101,11 +101,6 @@ class ResNetC4Model(DetectionModel):
         #     cfg.RPN.TEST_POST_NMS_TOPK)  # 1000
 
 
-
-
-
-
-
         # build resnet c4
 
         x, y, w, h = tf.split(inputs['gt_boxes'], 4, axis=1)

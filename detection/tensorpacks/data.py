@@ -406,7 +406,9 @@ def get_attributes_dataflow():
     """
     # roidbs = load_many(cfg.DATA.BASEDIR, cfg.DATA.TRAIN)
     logger.info("loading wider attributes dataset...")
-    roidbs = load_many('/root/datasets/wider attribute', 'train')
+    roidbs_train = load_many('/root/datasets/wider attribute', 'train')
+    roidbs_val = load_many('/root/datasets/wider attribute', 'val')
+    roidbs = roidbs_train+roidbs_val
     logger.info("load finished!")
     """
     To train on your own data, change this to your loader.

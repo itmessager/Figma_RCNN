@@ -166,7 +166,6 @@ class ResNetC4Model(DetectionModel):
             final_boxes, final_scores, final_labels = fastrcnn_predictions(
                 decoded_boxes, label_scores, name_scope='output')
 
-
             feature_maskrcnn = resnet_conv5(roi_resized,
                                             cfg.BACKBONE.RESNET_NUM_BLOCK[
                                                 -1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
@@ -183,7 +182,7 @@ class ResNetC4Model(DetectionModel):
             fg_mask_roi_resized = tf.where(final_mask_logits_tile >= 0.5, roi_resized,
                                            roi_resized * 1.0)
             feature_attrs = resnet_conv5_attr(fg_mask_roi_resized,
-                                         cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
+                                              cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
 
             feature_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  # ??
             # build attrs branch
