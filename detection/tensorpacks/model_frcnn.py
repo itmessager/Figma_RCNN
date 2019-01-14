@@ -153,27 +153,28 @@ def attrs_predict(feature):
         A Dict
         attribute name: attribute logits
     """
-    attrs_logits = [logits_to_predict(attr_output('male', feature)),
-                    logits_to_predict(attr_output('longhair', feature)),
-                    logits_to_predict(attr_output('sunglass', feature)),
-                    logits_to_predict(attr_output('hat', feature)),
-                    logits_to_predict(attr_output('tshirt', feature)),
-                    logits_to_predict(attr_output('longsleeve', feature)),
-                    logits_to_predict(attr_output('formal', feature)),
-                    logits_to_predict(attr_output('shorts', feature)),
-                    logits_to_predict(attr_output('jeans', feature)),
-                    logits_to_predict(attr_output('skirt', feature)),
-                    logits_to_predict(attr_output('facemask', feature)),
-                    logits_to_predict(attr_output('logo', feature)),
-                    logits_to_predict(attr_output('stripe', feature)),
-                    logits_to_predict(attr_output('longpants', feature))]
+    attrs_logits = [logits_to_predict(attr_output('male', feature), 'male'),
+                    logits_to_predict(attr_output('longhair', feature), 'longhair'),
+                    logits_to_predict(attr_output('sunglass', feature), 'sunglass'),
+                    logits_to_predict(attr_output('hat', feature), 'hat'),
+                    logits_to_predict(attr_output('tshirt', feature), 'tshirt'),
+                    logits_to_predict(attr_output('longsleeve', feature), 'longsleeve'),
+                    logits_to_predict(attr_output('formal', feature), 'formal'),
+                    logits_to_predict(attr_output('shorts', feature), 'shorts'),
+                    logits_to_predict(attr_output('jeans', feature), 'jeans'),
+                    logits_to_predict(attr_output('skirt', feature), 'skirt'),
+                    logits_to_predict(attr_output('facemask', feature), 'facemask'),
+                    logits_to_predict(attr_output('logo', feature), 'logo'),
+                    logits_to_predict(attr_output('stripe', feature), 'stripe'),
+                    logits_to_predict(attr_output('longpants', feature), 'longpants')]
 
     return attrs_logits
 
 
-def logits_to_predict(attr_logits):
+def logits_to_predict(attr_logits, name=None):
     """
     Args:
+        :param name: add name for tensor if name is not None
         :param attr_logits:
     Returns:
         predict_label nx1 [-1,1,0,-1,-1] int64
@@ -185,8 +186,10 @@ def logits_to_predict(attr_logits):
     prediction = tf.where(attribute_logits > 0.5, tf.ones_like(attribute_logits), tf.zeros_like(attribute_logits))
     prediction = tf.where(specific_logits < 0.5, -tf.ones_like(prediction), prediction)
     predict_label = tf.to_int32(prediction)
-
-    return predict_label
+    if name:
+        return tf.identity(predict_label, name='{}_predict'.format(name))
+    else:
+        return predict_label
 
 
 # @under_name_scope()

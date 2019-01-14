@@ -32,7 +32,7 @@ import tensorpack.utils.viz as tpviz
 from detection.tensorpacks.coco import COCODetection
 from detection.tensorpacks.basemodel import (
     image_preprocess, resnet_c4_backbone, resnet_conv5,
-    resnet_fpn_backbone)
+    resnet_fpn_backbone, resnet_conv5_attr)
 
 from detection.tensorpacks import model_frcnn
 from detection.tensorpacks import model_mrcnn
@@ -160,7 +160,7 @@ class ResNetC4Model(DetectionModel):
             final_mask_logits_tile = tf.tile(final_mask_logits_expand, multiples=[1, 1024, 1, 1])
             fg_mask_roi_resized = tf.where(final_mask_logits_tile >= 0.5, roi_resized,
                                            roi_resized * 0.0)
-            feature_attrs = resnet_conv5(fg_mask_roi_resized,
+            feature_attrs = resnet_conv5_attr(fg_mask_roi_resized,
                                          cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
 
             feature_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  # ??

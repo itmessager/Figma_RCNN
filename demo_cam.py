@@ -141,16 +141,26 @@ if __name__ == "__main__":
         nargs='+'
     )
     parser.add_argument(
-        '--conv',
-        default='resnet18',
-        type=str)
-    parser.add_argument(
-        '--checkpoint',
-        default='',
-        type=str,
-        help='Save data (.pth) of previous training')
-    parser.add_argument(
         '--pretrain', action='store_true', help='Whether to use pretrained weights in conv models')
     args = parser.parse_args()
 
     run(init_models, process_detector_func, args, args.cam, args.video,args.image)
+
+'''
+
+--video
+/root/datasets/2018-08-30-170107.webm
+--cam
+0
+--face_model
+s3fd
+--face_ckpt
+/root/datasets/s3fd_convert.pth
+--obj_model
+tensorpack
+--obj_ckpt
+/home/Figma_RCNN/detection/tensorpacks/train_log/maskrcnn/checkpoint
+--obj_config
+DATA.BASEDIR=/root/datasets/COCO/DIR
+
+'''
