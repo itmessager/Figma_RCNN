@@ -282,8 +282,14 @@ def attr_losses(attr_name, labels, logits):
 
     with tf.name_scope('{}_metrics'.format(attr_name)), tf.device('/cpu:0'):
         prediction = logits_to_predict(logits)
-        accuracy = tf.metrics.accuracy(labels=labels, predictions=prediction, )[1]
-        accuracy = tf.identity(accuracy, name='{}_accuracy'.format(attr_name))
+
+        new_pre = tf.where(prediction < 0, 2 * tf.ones_like(prediction), prediction)
+        new_lab = tf.where(labels < 0, 2 * tf.ones_like(labels), labels)
+
+        accuracy = tf.metrics.mean_per_class_accuracy(labels=new_lab, predictions=new_pre, num_classes=3)[1]
+
+        # accuracy = tf.metrics.accuracy(labels=labels, predictions=prediction, )[1]
+        accuracy = tf.reduce_mean(accuracy, name='{}_accuracy'.format(attr_name))
 
     add_moving_summary(loss_sum, accuracy)
 

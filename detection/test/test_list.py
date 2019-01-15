@@ -46,12 +46,21 @@ def attr_losses(male_labels, male_logits):
         prediction = tf.where(specific_logits < 0.5, -tf.ones_like(prediction), prediction)
         prediction = tf.to_int64(prediction, name='label_prediction')
         # positive_label = tf.where(valid_males_label == 1.0)
-
         correct = tf.to_float(tf.equal(prediction, male_labels))  # boolean/integer gather is unavailable on GPU
+
+        new_prediction = translabel_for_mAcc(prediction)
+        new_label = translabel_for_mAcc(male_labels)
         # expend dim to prevent divide by zero
         accuracy1 = tf.reduce_mean(correct, name='accuracy')
-        accuracy2 = tf.metrics.average_precision_at_k(labels=male_labels, predictions=prediction,k=4)[1]
-    return valid_inds, prediction, male_labels, male_loss,specific_loss_mean,accuracy1,accuracy2,tf.shape(prediction)[0]
+
+        accuracy2 = tf.metrics.mean_per_class_accuracy(labels=new_label, predictions=new_prediction, num_classes=3)[1]
+        acc = tf.reduce_mean(accuracy2)
+    return valid_inds, prediction, male_labels, male_loss,specific_loss_mean,accuracy1, acc
+
+
+
+def translabel_for_mAcc(labels):
+    return tf.where(labels < 0, 2*tf.ones_like(labels), labels)
 
 
 if __name__=='__main__':
