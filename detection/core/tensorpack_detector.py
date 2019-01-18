@@ -22,16 +22,16 @@ class TensorPackDetector(AbstractDetector):
             model=MODEL,
             session_init=get_model_loader(weight_file),
             input_names=['image'],
-            output_names=['output/boxes', 'output/scores', 'output/labels', 'output/masks',
+            output_names=['person_boxes', 'person_scores', 'person_labels', 'person_masks',
                           'male_predict', 'longhair_predict', 'sunglass_predict',
                           'hat_predict', 'tshirt_predict', 'longsleeve_predict',
                           'formal_predict', 'shorts_predict', 'jeans_predict',
                           'skirt_predict', 'facemask_predict', 'logo_predict',
-                          'stripe_predict', 'longpants_predict'
+                          'stripe_predict', 'longpants_predict', 'person_boxes'
                           ]))
 
         # Only to load the class names into caches
-        COCODetection(cfg.DATA.BASEDIR, cfg.DATA.VAL)
+        #COCODetection(cfg.DATA.BASEDIR, cfg.DATA.VAL)
 
     def detect(self, img, rgb=True):
         # Convert to bgr if necessary

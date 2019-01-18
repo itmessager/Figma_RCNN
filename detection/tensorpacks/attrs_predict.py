@@ -145,19 +145,30 @@ class ResNetC4Model(DetectionModel):
         final_boxes, final_scores, final_labels = fastrcnn_predictions(
             decoded_boxes, label_scores, name_scope='output')
 
+        person_slice = tf.where(final_labels <= 1)
+        person_labels = tf.gather(final_labels, person_slice)
+        tf.reshape(person_labels, (-1,), name='person_labels')
+
+        person_boxes = tf.gather(final_boxes, person_slice)
+        final_person_boxes = tf.reshape(person_boxes, (-1, 4), name='person_boxes')
+
+        person_scores = tf.gather(final_scores, person_slice)
+        tf.reshape(person_scores, (-1,), name='person_scores')
+
         # Mask
-        roi_resized = roi_align(featuremap, final_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE), 14)
+        roi_resized = roi_align(featuremap, final_person_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE), 14)
         feature_maskrcnn = resnet_conv5(roi_resized, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
         mask_logits = maskrcnn_upXconv_head(
             'maskrcnn', feature_maskrcnn, cfg.DATA.NUM_CATEGORY, 0)  # #result x #cat x 14x14
         indices = tf.stack([tf.range(tf.size(final_labels)), tf.to_int32(final_labels) - 1], axis=1)
         final_mask_logits = tf.gather_nd(mask_logits, indices)  # #resultx14x14
         final_mask_logits = tf.sigmoid(final_mask_logits, name='output/masks')
-
+        person_mask_logits = tf.gather(final_mask_logits, person_slice)
+        person_masks = tf.reshape(person_mask_logits, (-1, 14, 14), name='person_masks')
         Mask = True
         if Mask:
-            final_mask_logits_expand = tf.expand_dims(final_mask_logits, axis=1)
-            final_mask_logits_tile = tf.tile(final_mask_logits_expand, multiples=[1, 1024, 1, 1])
+            # final_mask_logits_expand = tf.expand_dims(final_mask_logits, axis=1)
+            final_mask_logits_tile = tf.tile(person_mask_logits, multiples=[1, 1024, 1, 1])
             fg_mask_roi_resized = tf.where(final_mask_logits_tile >= 0.5, roi_resized,
                                            roi_resized * 0.0)
             feature_attrs = resnet_conv5_attr(fg_mask_roi_resized,
@@ -209,12 +220,12 @@ if __name__ == '__main__':
             model=MODEL,  # model
             session_init=get_model_loader(args.load),  # weight
             input_names=['image'],
-            output_names=['output/boxes', 'output/scores', 'output/labels', 'output/masks',
+            output_names=['person_boxes', 'person_scores', 'person_labels', 'person_masks',
                           'male_predict', 'longhair_predict', 'sunglass_predict',
                           'hat_predict', 'tshirt_predict', 'longsleeve_predict',
                           'formal_predict', 'shorts_predict', 'jeans_predict',
                           'skirt_predict', 'facemask_predict', 'logo_predict',
-                          'stripe_predict', 'longpants_predict'
+                          'stripe_predict', 'longpants_predict','person_boxes'
                           ]))
 
         COCODetection(cfg.DATA.BASEDIR, 'val2014')  # load the class names into cfg.DATA.CLASS_NAMES
