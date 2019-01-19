@@ -166,28 +166,21 @@ class ResNetC4Model(DetectionModel):
         person_mask_logits = tf.gather(final_mask_logits, person_slice)
         person_masks = tf.reshape(person_mask_logits, (-1, 14, 14), name='person_masks')
         Mask = True
-        if Mask:
+
             # final_mask_logits_expand = tf.expand_dims(final_mask_logits, axis=1)
-            final_mask_logits_tile = tf.tile(person_mask_logits, multiples=[1, 1024, 1, 1])
-            fg_mask_roi_resized = tf.where(final_mask_logits_tile >= 0.5, roi_resized,
-                                           roi_resized * 0.0)
-            feature_attrs = resnet_conv5_attr(fg_mask_roi_resized,
-                                         cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
+        final_mask_logits_tile = tf.tile(person_mask_logits, multiples=[1, 1024, 1, 1])
+        fg_mask_roi_resized = tf.where(final_mask_logits_tile >= 0.5, roi_resized,
+                                       roi_resized * 0.0)
+        feature_attrs = resnet_conv5_attr(fg_mask_roi_resized,
+                                     cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
 
-            feature_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  # ??
-            #attrs_logits = attrs_head('attrs', feature_gap)
-            attrs_labels = attrs_predict(feature_gap)
 
+        if Mask:
+            feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  # ??
         else:
-            boxes_on_featuremap = final_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
-            roi_resized = roi_align(featuremap, boxes_on_featuremap, 14)
-            feature_attrs = resnet_conv5(roi_resized,
-                                         cfg.BACKBONE.RESNET_NUM_BLOCK[-1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
-            # Keep C5 feature to be shared with mask branch
-            feature_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')
-            # build attrs branch
-            attrs_logits = attrs_head('attrs', feature_gap)
-
+            feature_attrs_gap = GlobalAvgPooling('gap', feature_fastrcnn, data_format='channels_first')  # ??
+            #attrs_logits = attrs_head('attrs', feature_gap)
+        attrs_labels = attrs_predict(feature_attrs_gap)
 
 def predict(pred_func, input_file):
     img = cv2.imread(input_file, cv2.IMREAD_COLOR)
