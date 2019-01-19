@@ -181,7 +181,7 @@ class ResNetC4Model(DetectionModel):
         else:
             boxes_on_featuremap = final_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
             roi_resized = roi_align(featuremap, boxes_on_featuremap, 14)
-            feature_attrs = resnet_conv5(roi_resized,
+            feature_attrs = resnet_conv5_attr(roi_resized,
                                          cfg.BACKBONE.RESNET_NUM_BLOCK[-1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
             # Keep C5 feature to be shared with mask branch
             feature_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')
@@ -235,7 +235,7 @@ if __name__ == '__main__':
 --config
 DATA.BASEDIR=/root/datasets/COCO/DIR
 --predict
-/root/Figma_RCNN/detection/test/celebrities.jpg
+/root/datasets/img-folder/1.jpg
 --load
-/root/datasets/COCO-R50C4-MaskRCNN-Standard.npz
+/root/datasets/maskrcnn/checkpoint
 '''
