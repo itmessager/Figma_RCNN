@@ -163,19 +163,19 @@ class ResNetC4Model(DetectionModel):
         indices = tf.stack([tf.range(tf.size(final_labels)), tf.to_int32(final_labels) - 1], axis=1)
         final_mask_logits = tf.gather_nd(mask_logits, indices)  # #resultx14x14
         final_mask_logits = tf.sigmoid(final_mask_logits, name='output/masks')
-        person_mask_logits = tf.gather(final_mask_logits, person_slice)
-        person_masks = tf.reshape(person_mask_logits, (-1, 14, 14), name='person_masks')
+
         Mask = True
-
-            # final_mask_logits_expand = tf.expand_dims(final_mask_logits, axis=1)
-        final_mask_logits_tile = tf.tile(person_mask_logits, multiples=[1, 1024, 1, 1])
-        fg_mask_roi_resized = tf.where(final_mask_logits_tile >= 0.5, roi_resized,
-                                       roi_resized * 0.0)
-        feature_attrs = resnet_conv5_attr(fg_mask_roi_resized,
-                                     cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
-
         if Mask:
+            person_mask_logits = tf.gather(final_mask_logits, person_slice)
+            tf.reshape(person_mask_logits, (-1, 14, 14), name='person_masks')
+            final_mask_logits_tile = tf.tile(person_mask_logits, multiples=[1, 1024, 1, 1])
+            fg_mask_roi_resized = tf.where(final_mask_logits_tile >= 0.5, roi_resized,
+                                           roi_resized * 0.0)
+            feature_attrs = resnet_conv5_attr(fg_mask_roi_resized,
+                                              cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
+
             feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  # ??
+        else:
             feature_attrs_gap = GlobalAvgPooling('gap', feature_fastrcnn, data_format='channels_first')  # ??
             #attrs_logits = attrs_head('attrs', feature_gap)
         attrs_labels = attrs_predict(feature_attrs_gap)

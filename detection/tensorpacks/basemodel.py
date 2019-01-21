@@ -188,7 +188,6 @@ def resnet_conv5(image, num_block):
 # another c5 block for attr respective
 @auto_reuse_variable_scope
 def resnet_conv5_attr(image, num_block):
-
     with backbone_scope(freeze=False):
         l = resnet_group('group3_attr', image, resnet_bottleneck, 512, num_block, 2)
         return l

@@ -191,7 +191,10 @@ class Sort(object):
          is a list containing index into the input detection list which corresponds to each tracked_object, and removed_ids
          contains a list of outdated tracked_object ids which are supposed to be removed by other dependent system.
         """
-        n_cols = dets.shape[1]
+        if len(dets) != 0:
+            n_cols = dets.shape[1]
+        else:
+            n_cols = 0
         self.frame_count += 1
 
         # Get predicted locations from existing trackers and remove any invalid trackers
