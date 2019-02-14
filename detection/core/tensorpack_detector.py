@@ -57,7 +57,7 @@ if __name__ == '__main__':
     if args.config:
         cfg.update_args(args.config)
 
-    obj_detector = TensorPackDetector('/root/Figma_RCNN/detection/tensorpacks/train_log/maskrcnn/checkpoint')
+    obj_detector = TensorPackDetector('/home/Figma_RCNN/detection/tensorpacks/train_log/maskrcnn/checkpoint')
     img = cv2.imread('/root/Figma_RCNN/detection/test/celebrities.jpg', cv2.IMREAD_COLOR)
     results = obj_detector.detect(img, rgb=False)
     final = draw_final_outputs(img, results)  # image contain boxes,labels and scores
