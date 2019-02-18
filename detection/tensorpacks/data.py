@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# File: data.py
+# File: dataflow.py
 
 import cv2
 import numpy as np
@@ -417,13 +417,6 @@ def get_attributes_dataflow():
     file_name: str, full path to the image
     boxes: numpy array of kx4 floats
     attrs: numpy array of k integers ,-1->negtive   0->ignorce   1->positive
-    segmentation: k lists of numpy arrays (one for each box).
-        Each list of numpy arrays corresponds to the mask for one instance.
-        Each numpy array in the list is a polygon of shape Nx2,
-        because one mask can be represented by N polygons.
-        If your segmentation annotations are originally masks rather than polygons,
-        either convert it, or the augmentation code below will need to be
-        changed or skipped accordingly.
     """
 
     # Valid training images should have at least one fg box.
@@ -517,9 +510,10 @@ if __name__ == '__main__':
     from tensorpack.dataflow import PrintData
 
     cfg.DATA.BASEDIR = os.path.expanduser('~/datasets/COCO/DIR')
-    ds = get_train_dataflow()
-    ds = PrintData(ds, 100)
-    TestDataSpeed(ds, 50000).start()
+    ds = get_attributes_dataflow()
+    #ds = PrintData(ds, 100)
+    #TestDataSpeed(ds, 50000).start()
     ds.reset_state()
     for k in ds:
+        ak = k
         pass

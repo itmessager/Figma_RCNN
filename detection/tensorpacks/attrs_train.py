@@ -185,7 +185,9 @@ class ResNetC4Model(DetectionModel):
             feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  # ??
         # build attrs branch
         else:
-            feature_attrs_gap = GlobalAvgPooling('gap', feature_fastrcnn, data_format='channels_first')  # ??
+            feature_attrs = resnet_conv5_attr(roi_resized,
+                                              cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
+            feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  # ??
 
         attrs_logits = attrs_head('attrs', feature_attrs_gap)
         attrs_loss = all_attrs_losses(inputs, attrs_logits)
