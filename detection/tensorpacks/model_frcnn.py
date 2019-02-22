@@ -180,8 +180,8 @@ def logits_to_predict(attr_logits, name=None):
         predict_label nx1 [-1,1,0,-1,-1] int64
 
     """
-    specific_logits = attr_logits[:, 0]
-    attribute_logits = attr_logits[:, 1]
+    specific_logits = attr_logits[:, 0]    # 1 means sure    0 means not sure
+    attribute_logits = attr_logits[:, 1]   # 1 means Yes     0 means No
 
     prediction = tf.where(attribute_logits > 0.5, tf.ones_like(attribute_logits), tf.zeros_like(attribute_logits))
     prediction = tf.where(specific_logits < 0.5, -tf.ones_like(prediction), prediction)
@@ -248,6 +248,7 @@ def all_attrs_losses(attr_labels, attr_label_logits):
 #         accuracy = tf.reduce_mean(correct, name='{}_accuracy'.format(attr_name))
 #     add_moving_summary(attr_loss_sum, accuracy)
 #     return attr_loss_sum
+learn = tf.contrib.learn
 
 def attr_losses(attr_name, labels, logits):
     """
@@ -282,7 +283,7 @@ def attr_losses(attr_name, labels, logits):
 
     with tf.name_scope('{}_metrics'.format(attr_name)), tf.device('/cpu:0'):
         prediction = logits_to_predict(logits)
-
+        # 0  1  2 means - + not sure
         new_pre = tf.where(prediction < 0, 2 * tf.ones_like(prediction), prediction)
         new_lab = tf.where(labels < 0, 2 * tf.ones_like(labels), labels)
 

@@ -14,8 +14,9 @@ def make_dataset(root, subset):
     assert subset in ['train', 'val', 'test.py']
 
     data = []
-    attrs = ['male', 'longhair', 'sunglass', 'hat', 'tshirt', 'longsleeve', 'formal', 'shorts', 'jeans', 'longpants',
-             'skirt', 'facemask', 'logo', 'stripe']
+    attr_names = ['male', 'longhair', 'sunglass', 'hat', 'tshirt', 'longsleeve', 'formal', 'shorts', 'jeans',
+                  'longpants',
+                  'skirt', 'facemask', 'logo', 'stripe']
     # Assuming dataset directory is layout as
     # Wider Attribute
     #   -- Anno
@@ -43,7 +44,7 @@ def make_dataset(root, subset):
                 sample['img'] = os.path.join(root, im['file_name'])
                 #   print(sample['img'])
                 sample['bbox'] = person['bbox']
-                for i, attr in enumerate(attrs):
+                for i, attr in enumerate(attr_names):
                     sample[attr] = int(person['attribute'][i])
                     if person['attribute'][i] != 1:
                         # -1 => 0  1=> 1  0=>-1
@@ -53,7 +54,10 @@ def make_dataset(root, subset):
     return data
 
 
-def load_many(basedir, names):
+def load_many(basedir, names, is_augment=False):
+    attr_names = ['male', 'longhair', 'sunglass', 'hat', 'tshirt', 'longsleeve', 'formal', 'shorts', 'jeans',
+                  'longpants',
+                  'skirt', 'facemask', 'logo', 'stripe']
     train_data_list = make_dataset(basedir, names)
     # a list contain  16 attributes of each roi
     img_attr_dict = {}
@@ -85,11 +89,34 @@ def load_many(basedir, names):
                 if np.array(img_attr[key]).shape == ():  # convert shape () to (1,)
                     img_attr[key].resize((1,))
 
-        img_attr_list.append(img_attr)
+        if is_augment:
+            img_attr['bbox'] = box_augment(img_attr['bbox'])
+            for attr_name in attr_names:
+                img_attr[attr_name] = attr_augment(img_attr[attr_name])
 
+        img_attr_list.append(img_attr)
     return img_attr_list
 
 
+def attr_augment(attribute):
+    attribute_aug = attribute
+    for attr in attribute:
+        attr_aug = np.tile(attr, 5)
+        attribute_aug = np.concatenate((attribute_aug, attr_aug), axis=0)
+    return attribute_aug
+
+
+def box_augment(bboxes):
+    bboxes_aug = bboxes
+    for box in bboxes:
+        temp = [np.random.normal(box_i, 0.02*(abs(box_i)+box_i),size=5) for box_i in box]
+        b_aug = np.array(list(zip(temp[0], temp[1], temp[2], temp[3])))
+        bboxes_aug = np.concatenate((bboxes_aug, b_aug), axis=0)
+    return bboxes_aug
+
+
 if __name__ == '__main__':
-    roidbs = load_many('/root/datasets/wider attribute', 'train')
+    roidbs = load_many('/root/datasets/wider attribute', 'train', True)
+    roidb = roidbs[0]
+    #bbb = box_augment(roidb['bbox'])
     print("OK")

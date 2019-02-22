@@ -406,8 +406,8 @@ def get_attributes_dataflow():
     """
     # roidbs = load_many(cfg.DATA.BASEDIR, cfg.DATA.TRAIN)
     logger.info("loading wider attributes dataset...")
-    roidbs_train = load_many('/root/datasets/wider attribute', 'train')
-    roidbs_val = load_many('/root/datasets/wider attribute', 'val')
+    roidbs_train = load_many('/root/datasets/wider attribute', 'train', is_augment=True)
+    roidbs_val = load_many('/root/datasets/wider attribute', 'val', is_augment=True)
     roidbs = roidbs_train+roidbs_val
     logger.info("load finished!")
     """
@@ -479,6 +479,7 @@ def get_attributes_dataflow():
     return ds
 
 
+
 def get_eval_dataflow(shard=0, num_shards=1):
     """
     Args:
@@ -510,10 +511,8 @@ if __name__ == '__main__':
     from tensorpack.dataflow import PrintData
 
     cfg.DATA.BASEDIR = os.path.expanduser('~/datasets/COCO/DIR')
-    ds = get_attributes_dataflow()
+    attr_ds = get_attributes_dataflow()
+    #box_ds = get_train_dataflow()
     #ds = PrintData(ds, 100)
     #TestDataSpeed(ds, 50000).start()
-    ds.reset_state()
-    for k in ds:
-        ak = k
-        pass
+    print("OK")
