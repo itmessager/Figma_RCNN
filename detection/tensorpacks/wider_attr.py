@@ -90,7 +90,7 @@ def load_many(basedir, names, is_augment=False):
                     img_attr[key].resize((1,))
 
         if is_augment:
-            img_attr['bbox'] = box_augment(img_attr['bbox'])
+            img_attr['bbox'] = box_augment(img_attr['bbox']).astype(np.float32)
             for attr_name in attr_names:
                 img_attr[attr_name] = attr_augment(img_attr[attr_name])
 

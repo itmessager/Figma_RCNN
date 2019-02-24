@@ -12,10 +12,24 @@ import numpy as np
 import tensorflow as tf
 
 #males =tf.constant(np.array([-1, 1, 1, 1, -1, 1, -1, -1, 1, 1]))
-males =tf.constant(np.array([-1, 1, -1, 1, 1, -1, 1, 0, 1, -1]))
+# males =tf.constant(np.array([-1, 1, -1, 1, 0, -1, 1, 0, 1, -1]))
+# male_logits = tf.constant(np.array([(0.44, 0.51), (0.72, 0.58), (0.16, 0.84), (0.77, 0.83), (0.51, 0.49),
+#                                     (0.4, 0.4), (0.72, 0.58), (0.84, 0.16), (0.77, 0.83), (0.49, 0.51)]
+#                                   ,dtype='float32'))
+
+
+males =tf.constant(np.array([-1, -1, -1, -1, -1, -1, -1, -1, -1, -1]))
 male_logits = tf.constant(np.array([(0.44, 0.51), (0.72, 0.58), (0.16, 0.84), (0.77, 0.83), (0.51, 0.49),
                                     (0.4, 0.4), (0.72, 0.58), (0.84, 0.16), (0.77, 0.83), (0.49, 0.51)]
                                   ,dtype='float32'))
+
+
+def convert2D(logits):
+    logits2D = tf.ones_like(logits) - logits
+    return tf.concat([logits2D, logits], 1)
+
+
+
 def attr_losses(male_labels, male_logits):
     """
     Args:
@@ -34,6 +48,12 @@ def attr_losses(male_labels, male_logits):
 
     valid_male_labels = tf.reshape(tf.gather(male_labels,valid_inds), [-1])
     valid_male_logits = tf.reshape(tf.gather(attribute_logits,valid_inds), [-1])
+
+    valid_male_logits2D= convert2D(tf.gather(attribute_logits,valid_inds))
+
+    AP = tf.metrics.average_precision_at_k(labels=valid_male_labels,predictions=valid_male_logits2D,k=2)[1]
+
+
 
     male_loss = tf.nn.sigmoid_cross_entropy_with_logits(
         labels=tf.to_float(valid_male_labels), logits=valid_male_logits)
@@ -55,7 +75,7 @@ def attr_losses(male_labels, male_logits):
 
         accuracy2 = tf.metrics.mean_per_class_accuracy(labels=new_label, predictions=new_prediction, num_classes=3)[1]
         acc = tf.reduce_mean(accuracy2)
-    return valid_inds, prediction, male_labels, male_loss,specific_loss_mean,accuracy1, acc
+    return valid_male_labels, valid_male_logits, valid_male_logits2D, male_loss,specific_loss_mean,accuracy1, acc,AP
 
 
 

@@ -222,32 +222,6 @@ def all_attrs_losses(attr_labels, attr_label_logits):
     return attrs_loss
 
 
-# def attr_losses(attr_name, labels, logits):
-#     """
-#     Args:
-#         labels: n,[-1,0,1,1,0]
-#         logits: nx2 [(0.4,0.6),(0.72,0.28),(0.84,0.16),(0.17,0.83),(0.49,0.51)]
-#     Returns:
-#         attr_loss
-#     """
-#     # filter the unrecognization out
-#     valid_inds = tf.where(labels >= 0)
-#     valid_label = tf.reshape(tf.gather(labels, valid_inds), [-1])
-#     valid_logits = tf.reshape(tf.gather(logits, valid_inds), [-1, 2])
-#     attr_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-#         labels=valid_label, logits=valid_logits)
-#     attr_loss_sum = tf.reduce_sum(attr_loss, name='{}_loss'.format(attr_name))
-#     #attr_loss_sum = tf.reduce_mean(attr_loss, name='attr_loss')
-#
-#     with tf.name_scope('{}_metrics'.format(attr_name)), tf.device('/cpu:0'):
-#         prediction = tf.argmax(valid_logits, axis=1, name='{}_prediction'.format(attr_name))
-#         correct = tf.to_float(tf.equal(prediction, valid_label))  # boolean/integer gather is unavailable on GPU
-#         # expend dim to prevent divide by zero
-#         expand_dim = tf.constant([0.5])
-#         correct = tf.concat([correct, expand_dim], 0)
-#         accuracy = tf.reduce_mean(correct, name='{}_accuracy'.format(attr_name))
-#     add_moving_summary(attr_loss_sum, accuracy)
-#     return attr_loss_sum
 learn = tf.contrib.learn
 
 def attr_losses(attr_name, labels, logits):
@@ -280,21 +254,29 @@ def attr_losses(attr_name, labels, logits):
     attr_loss_sum = tf.reduce_sum(attr_loss)
     # attr_loss_sum = tf.reduce_mean(attr_loss, name='attr_loss')
     loss_sum = tf.add_n([attr_loss_sum, specific_loss_mean], name='{}_loss'.format(attr_name))
+    prediction = convert2D(tf.gather(attribute_logits, valid_inds))
 
     with tf.name_scope('{}_metrics'.format(attr_name)), tf.device('/cpu:0'):
-        prediction = logits_to_predict(logits)
+        predict_label = logits_to_predict(logits)
         # 0  1  2 means - + not sure
-        new_pre = tf.where(prediction < 0, 2 * tf.ones_like(prediction), prediction)
+        new_pre = tf.where(predict_label < 0, 2 * tf.ones_like(predict_label), predict_label)
         new_lab = tf.where(labels < 0, 2 * tf.ones_like(labels), labels)
 
         accuracy = tf.metrics.mean_per_class_accuracy(labels=new_lab, predictions=new_pre, num_classes=3)[1]
-
+        AP = tf.metrics.average_precision_at_k(labels=valid_attr_labels, predictions=prediction, k=2)[1]
         # accuracy = tf.metrics.accuracy(labels=labels, predictions=prediction, )[1]
-        accuracy = tf.reduce_mean(accuracy, name='{}_accuracy'.format(attr_name))
+        accuracy = tf.reduce_mean(accuracy, name='{}_mAcc'.format(attr_name))
+        average_precision = tf.identity(AP, name='{}_AP'.format(attr_name))
 
-    add_moving_summary(loss_sum, accuracy)
+    add_moving_summary(loss_sum, accuracy,average_precision)
 
     return loss_sum
+
+
+def convert2D(logits):
+    logits2D = tf.ones_like(logits) - logits
+    return tf.concat([logits2D, logits], 1)
+
 
 
 @layer_register(log_shape=True)
