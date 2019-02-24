@@ -406,8 +406,8 @@ def get_attributes_dataflow():
     """
     # roidbs = load_many(cfg.DATA.BASEDIR, cfg.DATA.TRAIN)
     logger.info("loading wider attributes dataset...")
-    roidbs_train = load_many('/root/datasets/wider attribute', 'train', is_augment=True)
-    roidbs_val = load_many('/root/datasets/wider attribute', 'val', is_augment=True)
+    roidbs_train = load_many('/root/datasets/wider attribute', 'train', True)
+    roidbs_val = load_many('/root/datasets/wider attribute', 'val', True)
     roidbs = roidbs_train+roidbs_val
     logger.info("load finished!")
     """
