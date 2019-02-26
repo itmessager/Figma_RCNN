@@ -109,7 +109,8 @@ def attr_augment(attribute):
 def box_augment(bboxes):
     bboxes_aug = bboxes
     for box in bboxes:
-        temp = [np.random.normal(box_i, 0.02*(abs(box_i)+box_i),size=5) for box_i in box]
+        #temp = [np.random.normal(box_i, 0.04*(abs(box_i)+box_i),size=5) for box_i in box]
+        temp = [np.random.normal(box_i, 0.02*abs(box[2]+box[3]), size=5) for box_i in box]
         b_aug = np.array(list(zip(temp[0], temp[1], temp[2], temp[3])))
         bboxes_aug = np.concatenate((bboxes_aug, b_aug), axis=0)
     return bboxes_aug
