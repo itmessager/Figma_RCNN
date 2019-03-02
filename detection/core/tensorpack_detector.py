@@ -27,9 +27,8 @@ class TensorPackDetector(AbstractDetector):
                           'hat_predict', 'tshirt_predict', 'longsleeve_predict',
                           'formal_predict', 'shorts_predict', 'jeans_predict',
                           'skirt_predict', 'facemask_predict', 'logo_predict',
-                          'stripe_predict', 'longpants_predict', 'person_boxes'
+                          'stripe_predict', 'longpants_predict'
                           ]))
-
         # Only to load the class names into caches
         COCODetection(cfg.DATA.BASEDIR, cfg.DATA.VAL)
 

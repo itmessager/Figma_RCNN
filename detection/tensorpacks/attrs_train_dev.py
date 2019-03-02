@@ -134,7 +134,7 @@ class ResNetC4Model(DetectionModel):
             cfg.RPN.TEST_POST_NMS_TOPK)  # 1000
         x, y, w, h = tf.split(inputs['gt_boxes'], 4, axis=1)
         gt_boxes = tf.concat([x, y, x + w, y + h], axis=1)
-        boxes_on_featuremap = gt_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
+        boxes_on_featuremap = gt_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE*1.2)  # ANCHOR_STRIDE = 16
         roi_resized = roi_align(featuremap, boxes_on_featuremap, 14)
 
         feature_fastrcnn = resnet_conv5(roi_resized,
@@ -174,20 +174,20 @@ class ResNetC4Model(DetectionModel):
         indices = tf.stack([tf.range(tf.size(person_labels)), tf.to_int32(person_labels) - 1], axis=1)
         final_mask_logits = tf.gather_nd(mask_logits, indices)  # #resultx14x14
         final_mask_logits = tf.sigmoid(final_mask_logits, name='output/masks')
-        mask = True
+        mask = False
         if mask:
             final_mask_logits_expand = tf.expand_dims(final_mask_logits, axis=1)
             final_mask_logits_tile = tf.tile(final_mask_logits_expand, multiples=[1, 1024, 1, 1])
             fg_roi_resized = tf.where(final_mask_logits_tile >= 0.5, roi_resized,
-                                           roi_resized * 0.5)
+                                      roi_resized * 0.5)
             feature_attrs = resnet_conv5_attr(fg_roi_resized,
                                               cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
-            feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  # ??
+            feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')
         # build attrs branch
         else:
             feature_attrs = resnet_conv5_attr(roi_resized,
                                               cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
-            feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  # ??
+            feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')
 
         attrs_logits = attrs_head('attrs', feature_attrs_gap)
         attrs_loss = all_attrs_losses(inputs, attrs_logits)
@@ -198,9 +198,7 @@ class ResNetC4Model(DetectionModel):
             '.*/W', l2_regularizer(cfg.TRAIN.WEIGHT_DECAY), name='wd_cost')
         all_losses.append(wd_cost)
         total_cost = tf.add_n(all_losses, 'total_cost')
-
         add_moving_summary(wd_cost, total_cost)
-        print('OK')
         return total_cost
 
 
@@ -329,7 +327,7 @@ if __name__ == '__main__':
     logger.info("LR Schedule (epochs, value): " + str(lr_schedule))
     # train_dataflow = get_train_dataflow()   # get the coco datasets
 
-    train_attrs_dataflow = get_attributes_dataflow()  # get the wider datasets
+    train_attrs_dataflow = get_attributes_dataflow(True)  # get the wider datasets
     # This is what's commonly referred to as "epochs"
     total_passes = cfg.TRAIN.LR_SCHEDULE[-1] * factor / train_attrs_dataflow.size()
     logger.info("Total passes of the training set is: {}".format(total_passes))

@@ -179,15 +179,12 @@ class ResNetC4Model(DetectionModel):
             final_mask_logits_expand = tf.expand_dims(final_mask_logits, axis=1)
             final_mask_logits_tile = tf.tile(final_mask_logits_expand, multiples=[1, 1024, 1, 1])
             fg_roi_resized = tf.where(final_mask_logits_tile >= 0.5, roi_resized,
-                                           roi_resized * 1.0)
-            feature_attrs = resnet_conv5_attr(fg_roi_resized,
-                                              cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
-            feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  # ??
-        # build attrs branch
+                                      roi_resized * 1.0)
+            feature_attrs = resnet_conv5_attr(fg_roi_resized, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
         else:
-            feature_attrs = resnet_conv5_attr(roi_resized,
-                                              cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
-            feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  # ??
+            feature_attrs = resnet_conv5_attr(roi_resized, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
+
+        feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')
 
         attrs_logits = attrs_head('attrs', feature_attrs_gap)
         attrs_loss = all_attrs_losses(inputs, attrs_logits)
