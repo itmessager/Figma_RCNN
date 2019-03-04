@@ -6,9 +6,8 @@ import argparse
 
 from PIL import ImageDraw, Image
 
-from detection.core.detector_factory import get_detector
 from tracking.tracker import PersonTracker
-from attributer.attributer import PersonAttrs
+from attributer.attributer import PersonAttrs, PersonBoxes
 from utils.viz_utils import draw_tracked_people, draw_person_attributes
 
 
@@ -55,35 +54,42 @@ def run(init_models, process_func, args, cam=None, video=None, image=None):
                 if k == 27:  # Esc key to stop
                     break
 
+from detection.core.tensorpack_detector import TensorPackDetector
+#from detection.tensorpacks.tensorpack_detector_dev import TensorPackDetector
+
+def get_detector(weight_file, config):
+    from detection.config.tensorpack_config import config as cfg
+    if config:
+        cfg.update_args(config)
+    return TensorPackDetector(weight_file)
+
+
 # generate models
 def init_models(args):
-    face_detector = get_detector(args.face_model, args.face_ckpt, args.face_config)
-    obj_detector = get_detector(args.obj_model, args.obj_ckpt, args.obj_config)
+    obj_detector = get_detector(args.obj_ckpt, args.obj_config)
     tracker = PersonTracker()
-    return (face_detector, obj_detector, tracker)
+    return (obj_detector, tracker)
 
 # use models to detect
 def process_detector_func(models, image_bgr):
     # Get models
-    face_detector, obj_detector, tracker = models
+    obj_detector, tracker = models
 
     # Perform detection
-    face_results = face_detector.detect(image_bgr, rgb=False)
     person_results = obj_detector.detect(image_bgr, rgb=False)
-    #people_results = [r for r in obj_results if r.class_id == 1]  # Extract person detection result
 
     # Tracking
-    tracked_people, removed_ids = tracker.update(face_results, person_results, image_bgr, rgb=False)
+    people_boxes = [PersonBoxes(r) for r in person_results]
     # Calculate people's attributes
     people_attrs = [PersonAttrs(r) for r in person_results]
     # Draw detection and tracking results
-    image_disp = draw_tracked_people(image_bgr, tracked_people)
+    image_disp = draw_tracked_people(image_bgr, people_boxes)
 
     # Draw attribute results
     image_pil = Image.fromarray(cv2.cvtColor(image_disp, cv2.COLOR_BGR2RGB))
     draw = ImageDraw.Draw(image_pil)
-    for trk, attr in zip(tracked_people, people_attrs):
-        draw_person_attributes(draw, attr, trk.face_box, trk.body_box)
+    for trk, attr in zip(people_boxes, people_attrs):
+        draw_person_attributes(draw, attr, trk.body_box)
 
     image_disp = cv2.cvtColor(np.array(image_pil), cv2.COLOR_RGB2BGR)
 
@@ -107,32 +113,15 @@ if __name__ == "__main__":
         type=int,
         help='Specify which camera to detect.')
     parser.add_argument(
-        '--face_model',
-        default='s3fd',
-        type=str,
-        help='s3fd | tf-model')
-    parser.add_argument(
         '--obj_model',
         default='tensorpack',
         type=str,
         help='tensorpack | tf-model')
     parser.add_argument(
-        '--face_ckpt',
-        default='',
-        type=str,
-        help='Checkpoint of face detection model')
-    parser.add_argument(
         '--obj_ckpt',
         default='',
         type=str,
         help='Checkpoint of object detection model')
-    parser.add_argument(
-        '--face_config',
-        default='',
-        type=str,
-        help='Configurations of face detection model',
-        nargs='+'
-    )
     parser.add_argument(
         '--obj_config',
         default='',
@@ -152,10 +141,6 @@ if __name__ == "__main__":
 /root/datasets/img-folder/1.jpg
 --cam
 0
---face_model
-s3fd
---face_ckpt
-/root/datasets/s3fd_convert.pth
 --obj_model
 tensorpack
 --obj_ckpt

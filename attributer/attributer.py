@@ -33,6 +33,15 @@ class PersonAttrs:
         self.sunglass = attribute.sunglass
         self.tshirt = attribute.tshirt
 
+
+class PersonBoxes:
+    def __init__(self, box):
+        self.body_box = box.box
+        self.body_mask = box.mask
+        self.body_score = box.score
+        self.id = box.class_id
+
+
 class Person:
     age = None
     gender = None

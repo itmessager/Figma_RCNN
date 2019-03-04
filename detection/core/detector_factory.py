@@ -1,5 +1,6 @@
 from detection.core.s3fd_face_detector import S3fdFaceDetector
-from detection.core.tensorpack_detector import TensorPackDetector
+#from detection.core.tensorpack_detector import TensorPackDetector
+from detection.tensorpacks.tensorpack_detector_dev import TensorPackDetector
 
 
 def get_detector(model, weight_file, config):

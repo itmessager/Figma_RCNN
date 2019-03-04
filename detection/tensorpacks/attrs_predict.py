@@ -157,7 +157,7 @@ class ResNetC4Model(DetectionModel):
 
         # Mask
         person_roi_resized = roi_align(featuremap, final_person_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE), 14)
-
+        #person_roi_resized_mini = roi_align(featuremap, final_person_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE * 1.2), 14)
         feature_maskrcnn = resnet_conv5(person_roi_resized, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
         mask_logits = maskrcnn_upXconv_head(
             'maskrcnn', feature_maskrcnn, cfg.DATA.NUM_CATEGORY, 0)  # #result x #cat x 14x14
@@ -166,7 +166,7 @@ class ResNetC4Model(DetectionModel):
         final_mask_logits = tf.sigmoid(final_mask_logits, name='output/masks')
         person_mask_logits = tf.gather(final_mask_logits, person_slice)
         tf.reshape(person_mask_logits, (-1, 14, 14), name='person_masks')
-        mask = True
+        mask = False
         if mask:
             final_mask_logits_expand = tf.expand_dims(final_mask_logits, axis=1)
             final_mask_logits_tile = tf.tile(final_mask_logits_expand, multiples=[1, 1024, 1, 1])

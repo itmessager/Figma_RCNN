@@ -109,7 +109,7 @@ def label_to_text(label):
         return unspecified_text
 
 
-def draw_person_attributes(draw, person, face, body):
+def draw_person_attributes(draw, person, body):
     # Draw (semi-)static attributes as text on body bounding boxes
     xmin, ymin, xmax, ymax = body
     text = [label_to_text(person.male)]
