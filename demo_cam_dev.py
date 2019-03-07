@@ -5,13 +5,11 @@ import cv2
 import argparse
 
 from PIL import ImageDraw, Image
-
-from tracking.tracker import PersonTracker
 from attributer.attributer import PersonAttrs, PersonBoxes
 from utils.viz_utils import draw_tracked_people, draw_person_attributes
 
 
-def run(init_models, process_func, args, cam=None, video=None, image=None):
+def run(process_func, args, cam=None, video=None, image=None):
     if cam:
         # Read camera
         cap = cv2.VideoCapture(0)
@@ -26,13 +24,9 @@ def run(init_models, process_func, args, cam=None, video=None, image=None):
     # Initialize model
     width, height = cap.get(3), cap.get(4)
     print((width, height))
-    models = init_models(args)
-
-    # cv2.namedWindow("video", cv2.WND_PROP_FULLSCREEN)
-    # cv2.setWindowProperty("video", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+    models = get_detector(args.obj_model, args.obj_ckpt, args.obj_config)
 
     frame_count = 0
-
     while True:
 
         grabbed, image_bgr = cap.read()
@@ -54,31 +48,25 @@ def run(init_models, process_func, args, cam=None, video=None, image=None):
                 if k == 27:  # Esc key to stop
                     break
 
-from detection.core.tensorpack_detector import TensorPackDetector
-#from detection.tensorpacks.tensorpack_detector_dev import TensorPackDetector
 
-def get_detector(weight_file, config):
+def get_detector(model, weight_file, config):
+    assert model in ['all-in-one', 'two-stage']
+    if model == 'all-in-one':
+        from detection.core.tensorpack_detector import TensorPackDetector
+    else:
+        from detection.tensorpacks.tensorpack_detector_dev import TensorPackDetector
     from detection.config.tensorpack_config import config as cfg
     if config:
         cfg.update_args(config)
     return TensorPackDetector(weight_file)
 
 
-# generate models
-def init_models(args):
-    obj_detector = get_detector(args.obj_ckpt, args.obj_config)
-    tracker = PersonTracker()
-    return (obj_detector, tracker)
-
 # use models to detect
 def process_detector_func(models, image_bgr):
-    # Get models
-    obj_detector, tracker = models
-
     # Perform detection
-    person_results = obj_detector.detect(image_bgr, rgb=False)
+    person_results = models.detect(image_bgr, rgb=False)
 
-    # Tracking
+    # get the people's boxes,masks,scores,id
     people_boxes = [PersonBoxes(r) for r in person_results]
     # Calculate people's attributes
     people_attrs = [PersonAttrs(r) for r in person_results]
@@ -114,9 +102,9 @@ if __name__ == "__main__":
         help='Specify which camera to detect.')
     parser.add_argument(
         '--obj_model',
-        default='tensorpack',
+        default='all-in-one',
         type=str,
-        help='tensorpack | tf-model')
+        help='all-in-one | two-stage')
     parser.add_argument(
         '--obj_ckpt',
         default='',
@@ -133,7 +121,7 @@ if __name__ == "__main__":
         '--pretrain', action='store_true', help='Whether to use pretrained weights in conv models')
     args = parser.parse_args()
 
-    run(init_models, process_detector_func, args, args.cam, args.video,args.image)
+    run(process_detector_func, args, args.cam, args.video, args.image)
 
 '''
 

@@ -39,7 +39,7 @@ class PersonBoxes:
         self.body_box = box.box
         self.body_mask = box.mask
         self.body_score = box.score
-        self.id = box.class_id
+        self.id = np.random.randint(1, 20)
 
 
 class Person:
@@ -76,7 +76,7 @@ class Person:
         gazing = estimate_gaze_from_headpose(head_yaw, head_pitch, head_roll)
         if self.gazing_at_screen is True and gazing:
             self.total_gaze_time += time.time() - self.last_update
-        if self.gazing_at_screen is False and gazing: # Switch from not gazing to gazing
+        if self.gazing_at_screen is False and gazing:  # Switch from not gazing to gazing
             self.total_gaze_number += 1
         self.gazing_at_screen = gazing
 
@@ -106,11 +106,12 @@ class Person:
             else:
                 if len(self.pool[i]) < self.pool_num:
                     self.pool[i].append(value[i])
-                    #self.pool[i] = sorted(self.pool[i], key=lambda attr: attr[1])
+                    # self.pool[i] = sorted(self.pool[i], key=lambda attr: attr[1])
                 else:
-                        self.pool[i].pop(0)
-                        self.pool[i].append(value[i])
-                        #self.pool[i] = sorted(self.pool[i], key=lambda attr: attr[1])
+                    self.pool[i].pop(0)
+                    self.pool[i].append(value[i])
+                    # self.pool[i] = sorted(self.pool[i], key=lambda attr: attr[1])
+
     def weight_result(self):
         classification_list = []
         for i in range(self.attr_num):
@@ -126,9 +127,9 @@ class Person:
                     # get the max prob index, if max has more than one value, return the first one
                     if prob:
                         sum_num = 0
-                        #scale = 10 * (prob - 1/self.pool_class_list[i])
+                        # scale = 10 * (prob - 1/self.pool_class_list[i])
                         for k in range(len(prob)):
-                            scale = (prob[k] - 1/self.pool_class_list[i]) * 10
+                            scale = (prob[k] - 1 / self.pool_class_list[i]) * 10
                             sum_num += pow(2, scale)
                         result_scores.append(sum_num)
                     else:
@@ -206,11 +207,11 @@ class AllInOneAttributer(object):
         return ages * self.age_std + self.age_mean
 
     def __init__(self, opt):
-        model, parameters, mean, std = generate_model(opt) # args return object of nn.Module,weight and bias of objct
+        model, parameters, mean, std = generate_model(opt)  # args return object of nn.Module,weight and bias of objct
         # parameters is useless
         logging.info('loading checkpoint {}'.format(opt.checkpoint))
         checkpoint = torch.load(opt.checkpoint)
-        model.load_state_dict(checkpoint['state_dict']) #load model's weight and bias
+        model.load_state_dict(checkpoint['state_dict'])  # load model's weight and bias
         model.eval()
 
         self.model = model
@@ -230,11 +231,11 @@ class AllInOneAttributer(object):
         preds = self.model(batch)  # [n_attributes, n_face_samples]
 
         # Convert each attribute to desired output format
-        converted_preds = [] # [n_attributes, n_face_samples]
+        converted_preds = []  # [n_attributes, n_face_samples]
         for i, attr in enumerate(A):
             p = preds[i]
             if attr == A.AGE:
-                p = self.unnormalize_age(p) # Post-process age
+                p = self.unnormalize_age(p)  # Post-process age
             elif attr == A.SMILING:
                 p = F.softmax(p, dim=1)
                 p = (p[:, 1] > self.thresh[attr])
@@ -243,7 +244,7 @@ class AllInOneAttributer(object):
                 classification = (p[:, 1] > self.thresh[attr]).float().unsqueeze(1)
                 prob = torch.max(p, 1)[0].unsqueeze(1)
                 p = torch.cat([classification, prob], 1)
-                #(p[:, 1] > self.thresh[attr]), p.max(1)))
+                # (p[:, 1] > self.thresh[attr]), p.max(1)))
             elif attr not in [A.HEAD_ROLL, A.HEAD_PITCH, A.HEAD_YAW]:
                 continue
             converted_preds.append(p.data.cpu().numpy())

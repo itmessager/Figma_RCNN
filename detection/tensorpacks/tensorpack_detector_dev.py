@@ -51,6 +51,8 @@ def detect_one_image(img, model_func):
     return results
 
 
+
+
 def detect_person(img, model_func):
     """
         Run detection on one image, using the TF callable.
@@ -68,21 +70,25 @@ def detect_person(img, model_func):
     resizer = CustomResize(cfg.PREPROC.TEST_SHORT_EDGE_SIZE, cfg.PREPROC.MAX_SIZE)
     resized_img = resizer.augment(img)
     scale = np.sqrt(resized_img.shape[0] * 1.0 / img.shape[0] * resized_img.shape[1] / img.shape[1])
-    boxes, *_ = model_func(resized_img)
+    boxes, probs, labels, masks, *_ = model_func(resized_img)
     # crop_imgs = [resized_img[box[1]:box[3], box[0]:box[2]] for box in boxes.astype(np.int)]
     results = []
     i=0
-    for box in boxes.astype(np.int):
+    for box, label, prob, mask in zip(boxes.astype(np.int), labels, probs, masks):
 
         crop_img = resized_img[box[1]:box[3], box[0]:box[2]]
+        seg_crop_img = segmentation(crop_img, mask)
         resized_img_black = np.zeros_like(resized_img)
-        resized_img_black[box[1]:box[3], box[0]:box[2]] = crop_img
-        # cv2.imwrite('/root/datasets/img_{}.jpg'.format(i), resized_img_black)
-        bbox, prob, label, mask, *attrs = model_func(resized_img_black)
-        bbox = bbox / scale
-        bbox = clip_boxes(bbox, orig_shape)
-        mask = fill_full_mask(bbox[0], mask[0], orig_shape)
-        result = DetectionResult(bbox[0], prob[0], label[0], mask,
+        resized_img_black[box[1]:box[3], box[0]:box[2]] = seg_crop_img
+        cv2.imwrite('/root/datasets/two-stage/img_{}.jpg'.format(i), resized_img_black)
+        _, _, _, _, *attrs = model_func(resized_img_black)
+        if len(attrs[0]) == 0:
+            print("Error")
+        print("OK")
+        box = box / scale
+        box = clip_boxes(box, orig_shape)
+        mask = fill_full_mask(box, mask, orig_shape)
+        result = DetectionResult(box, prob, label, mask,
                                  attrs[0][0], attrs[1][0], attrs[2][0], attrs[3][0],
                                  attrs[4][0], attrs[5][0], attrs[6][0], attrs[7][0],
                                  attrs[8][0], attrs[9][0], attrs[10][0], attrs[11][0],
@@ -90,6 +96,26 @@ def detect_person(img, model_func):
         results.append(result)
         i+=1
     return results
+
+
+def segmentation(crop_img, mask):
+    """
+    Args:
+        box: 4 float
+        mask: MxM floats
+
+    """
+    h, w = crop_img.shape[:2]
+    seg_img = crop_img.copy()
+    # rounding errors could happen here, because masks were not originally computed for this shape.
+    # but it's hard to do better, because the network does not know the "original" scale
+    mask = (cv2.resize(mask, (w, h)) > 0.5).astype('uint8')
+    for i in range(3):
+        seg_img[:, :, i] = mask * crop_img[:, :, i]
+    return seg_img if np.sum(mask) >= 6000 else crop_img
+
+
+
 
 
 class TensorPackDetector(AbstractDetector):
@@ -154,3 +180,20 @@ if __name__ == '__main__':
     final = draw_final_outputs(img, results)  # image contain boxes,labels and scores
     viz = np.concatenate((img, final), axis=1)
     tpviz.interactive_imshow(viz)
+
+
+
+'''
+--image
+/root/datasets/myimage/8.jpeg
+--cam
+0
+--obj_model
+two-stage
+--obj_ckpt
+/root/datasets/figmarcnn/checkpoint
+--obj_config
+DATA.BASEDIR=/root/datasets/COCO/DIR
+
+
+'''
