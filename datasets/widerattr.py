@@ -1,6 +1,6 @@
 from torch.utils.data import Dataset
 import os
-from attributer.attributes import WiderAttributes as WA, Attribute, AttributeType as AT
+
 from torchvision.datasets.folder import pil_loader
 import json
 
@@ -90,7 +90,3 @@ class WiderAttr(Dataset):
 
     def __len__(self):
         return len(self.data)
-
-    @staticmethod
-    def list_attributes(output_recognizable=False):
-        return [Attribute(attr, AT.BINARY, maybe_unrecognizable=output_recognizable) for attr in WA]

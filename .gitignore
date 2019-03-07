@@ -6,7 +6,6 @@ results*
 models
 output
 *.pth
-*.pb
 train_log/
 
 # Compilation related

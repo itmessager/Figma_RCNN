@@ -4,8 +4,6 @@ Base class for all detector. Defines detector interface.
 from abc import abstractmethod
 from collections import namedtuple
 
-import torch
-
 DetectionResult = namedtuple(
     'DetectionResult',
     ['box', 'score', 'class_id', 'mask', 'male', 'longhair',
@@ -17,17 +15,6 @@ score: float
 class_id: int, 1~NUM_CLASS
 mask: None, or a binary image of the original image shape
 """
-
-DetectionFaceResult = namedtuple(
-    'DetectionResult',
-    ['box', 'score', 'class_id', 'mask'])
-"""
-box: (xmin, ymin, xmax, ymax) in image original space
-score: float
-class_id: int, 1~NUM_CLASS
-mask: None, or a binary image of the original image shape
-"""
-
 
 class AbstractDetector(object):
     @abstractmethod
@@ -59,36 +46,3 @@ class AbstractDetector(object):
     @staticmethod
     def bgr_to_rgb(img):
         return img[..., ::-1]
-
-
-class BaseDetector(AbstractDetector):
-    def detect(self, img, rgb=True):
-        width, height = img.shape[1], img.shape[0]
-
-        preprocessed_img = self.preprocess(img, rgb)
-        results = self.inference(preprocessed_img)
-        return self.postprocess(results, width, height)
-
-    @abstractmethod
-    def preprocess(self, img, rgb):
-        pass
-
-    @abstractmethod
-    def inference(self, preprocessed_img):
-        pass
-
-    @abstractmethod
-    def postprocess(self, results, width, height):
-        pass
-
-
-class PytorchDetector(BaseDetector):
-    def __init__(self, model, weight_file):
-        self.net = model
-        self.net.load_state_dict(torch.load(weight_file))
-        self.net.cuda()
-        self.net.eval()
-
-    def inference(self, preprocessed_img):
-        with torch.no_grad():
-            return self.net(preprocessed_img)
