@@ -84,7 +84,6 @@ def detect_person(img, model_func):
         _, _, _, _, *attrs = model_func(resized_img_black)
         if len(attrs[0]) == 0:
             print("Error")
-        print("OK")
         box = box / scale
         box = clip_boxes(box, orig_shape)
         mask = fill_full_mask(box, mask, orig_shape)

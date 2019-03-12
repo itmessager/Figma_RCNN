@@ -130,7 +130,7 @@ if __name__ == "__main__":
 --cam
 0
 --obj_model
-tensorpack
+all-in-one
 --obj_ckpt
 /home/Figma_RCNN/detection/tensorpacks/train_log/figmarcnn/checkpoint
 --obj_config
