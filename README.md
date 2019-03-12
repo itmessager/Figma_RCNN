@@ -5,7 +5,7 @@ It is a part of the Figma RCNN project developed by Junlin Gu, Graduate student 
 
 ## Main References
 + [Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks](https://arxiv.org/abs/1506.01497)
-+ [Human Attribute Recognition by Deep Hierarchical Contexts](moz-extension://b3206d5d-61fb-4ed9-a1b1-98922c023e83/static/pdf/web/viewer.html?file=http%3A//personal.ie.cuhk.edu.hk/~ccloy/files/eccv_2016_human.pdf)
++ [Human Attribute Recognition by Deep Hierarchical Contexts](http://mmlab.ie.cuhk.edu.hk/projects/WIDERAttribute.html)
 + [An All-In-One Convolutional Neural Network for Face Analysis](https://www.researchgate.net/publication/309663347_An_All-In-One_Convolutional_Neural_Network_for_Face_Analysis)
 
 ## Dependencies
@@ -91,27 +91,26 @@ The models are fine-tuned from ResNet pre-trained R50C4 models in
 Performance in [Person Detection](https://github.com/facebookresearch/Detectron/) can
 be approximately reproduced.
 
- | Backbone                    | mAP<br/> (box;mask)               | Detectron mAP <sup>[1](#ft1)</sup><br/> (box;mask) |Configurations <br/>                                                                      |
- | R50-C4                      | 38.2;33.3 [:arrow_down:][R50C42x] | 37.8;32.8                                          |<summary>+++</summary> `MODE_MASK=True` `TRAIN.LR_SCHEDULE=[2000, 240000, 280000]`         |
+    | Backbone  | mAP (box;mask) | Detectron mAP (box;mask) |Configurations                                               |
+    | R50-C4    | 38.2;33.3      | 37.8;32.8                |`MODE_MASK=True` `TRAIN.LR_SCHEDULE=[2000, 240000, 280000]`  |
 
-Performance in [Person Attributes Recognition](moz-extension://b3206d5d-61fb-4ed9-a1b1-98922c023e83/static/pdf/web/viewer.html?file=http%3A//personal.ie.cuhk.edu.hk/~ccloy/files/eccv_2016_human.pdf) can
+Performance in [Person Attributes Recognition](http://mmlab.ie.cuhk.edu.hk/projects/WIDERAttribute.html) can
 be approximately reproduced.
-
- | Atrributes                  | AP<br/> (positive/negative)       | mAcc<br/> (positive/negative/unsure)               | Configurations <br/>                                                       |
- | male                        | 0.892                             | 0.72146                                            | <summary>+++</summary> `augment=False`                                     |
- | longhair                    | 0.871                             | 0.7192                                             | <summary>+++</summary> `augment=False`                                     |
- | sunglass                    | 0.882                             | 0.632                                              | <summary>+++</summary> `augment=False`                                     |
- | hat                         | 0.899                             | 0.63477                                            | <summary>+++</summary> `augment=False`                                     |
- | tshirt                      | 0.887                             | 0.69904                                            | <summary>+++</summary> `augment=False`                                     |
- | longsleeve                  | 0.919                             | 0.7272                                             | <summary>+++</summary> `augment=False`                                     |
- | formal                      | 0.932                             | 0.6529                                             | <summary>+++</summary> `augment=False`                                     |
- | shorts                      | 0.908                             | 0.92345                                            | <summary>+++</summary> `augment=False`                                     |
- | jeans                       | 0.915                             | 0.79589                                            | <summary>+++</summary> `augment=False`                                     |
- | longpants                   | 0.871                             | 0.90172                                            | <summary>+++</summary> `augment=False`                                     |
- | skirt                       | 0.915                             | 0.82129                                            | <summary>+++</summary> `augment=False`                                     |
- | facemask                    | 0.943                             | 0.70449                                            | <summary>+++</summary> `augment=False`                                     |
- | logo                        | 0.886                             | 0.63651                                            | <summary>+++</summary> `augment=False`                                     |
- | stripe                      | 0.931                             | 0.62751                                            | <summary>+++</summary> `augment=False`                                     |
+   
+    |      Atrributes   | AP (positive/negative)    |    mAcc(positive/negative/unsure)     | 
+    |        male       |        0.892              |          0.72146                      |
+    |      longhair     |        0.871              |          0.7192                       |
+    |      sunglass     |        0.882              |          0.632                        |
+    |        hat        |        0.899              |          0.63477                      |
+    |       tshirt      |        0.887              |          0.69904                      |
+    |     longsleeve    |        0.919              |          0.7272                       |
+    |       formal      |        0.932              |          0.6529                       |
+    |       shorts      |        0.915              |          0.79589                      |
+    |     longpants     |        0.871              |          0.90172                      |
+    |       skirt       |        0.915              |          0.82129                      |
+    |     facemask      |        0.943              |          0.70449                      |
+    |       logo        |        0.886              |          0.63651                      |
+    |      stripe       |        0.931              |          0.62751                      |
  
 ## Some examples
 
