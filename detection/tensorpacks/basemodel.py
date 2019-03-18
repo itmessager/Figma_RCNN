@@ -159,48 +159,28 @@ def resnet_group(name, l, block_func, features, count, stride):
 
 
 def resnet_c4_backbone(image, num_blocks):
-    with varreplace.freeze_variables(stop_gradient=False, skip_collection=True):
-        assert len(num_blocks) == 3
-        freeze_at = cfg.BACKBONE.FREEZE_AT
-        with backbone_scope(freeze=freeze_at > 0):
-            l = tf.pad(image, [[0, 0], [0, 0], maybe_reverse_pad(2, 3), maybe_reverse_pad(2, 3)])
-            l = Conv2D('conv0', l, 64, 7, strides=2, padding='VALID')
-            l = tf.pad(l, [[0, 0], [0, 0], maybe_reverse_pad(0, 1), maybe_reverse_pad(0, 1)])
-            l = MaxPooling('pool0', l, 3, strides=2, padding='VALID')
-
-        with backbone_scope(freeze=freeze_at > 1):
-            c2 = resnet_group('group0', l, resnet_bottleneck, 64, num_blocks[0], 1)
-        with backbone_scope(freeze=False):
-            c3 = resnet_group('group1', c2, resnet_bottleneck, 128, num_blocks[1], 2)
-            c4 = resnet_group('group2', c3, resnet_bottleneck, 256, num_blocks[2], 2)
-        # 16x downsampling up to now
-        return c4
-
-
-def resnet_c4_attr(image, num_blocks):
     assert len(num_blocks) == 3
     freeze_at = cfg.BACKBONE.FREEZE_AT
     with backbone_scope(freeze=freeze_at > 0):
         l = tf.pad(image, [[0, 0], [0, 0], maybe_reverse_pad(2, 3), maybe_reverse_pad(2, 3)])
-        l = Conv2D('conv0_', l, 64, 7, strides=2, padding='VALID')
+        l = Conv2D('conv0', l, 64, 7, strides=2, padding='VALID')
         l = tf.pad(l, [[0, 0], [0, 0], maybe_reverse_pad(0, 1), maybe_reverse_pad(0, 1)])
-        l = MaxPooling('pool0_', l, 3, strides=2, padding='VALID')
+        l = MaxPooling('pool0', l, 3, strides=2, padding='VALID')
 
     with backbone_scope(freeze=freeze_at > 1):
-        c2 = resnet_group('group0_', l, resnet_bottleneck, 64, num_blocks[0], 1)
+        c2 = resnet_group('group0', l, resnet_bottleneck, 64, num_blocks[0], 1)
     with backbone_scope(freeze=False):
-        c3 = resnet_group('group1_', c2, resnet_bottleneck, 128, num_blocks[1], 2)
-        c4 = resnet_group('group2_', c3, resnet_bottleneck, 256, num_blocks[2], 2)
+        c3 = resnet_group('group1', c2, resnet_bottleneck, 128, num_blocks[1], 2)
+        c4 = resnet_group('group2', c3, resnet_bottleneck, 256, num_blocks[2], 2)
     # 16x downsampling up to now
     return c4
 
 
 @auto_reuse_variable_scope
 def resnet_conv5(image, num_block):
-    with varreplace.freeze_variables(stop_gradient=False, skip_collection=True):
-        with backbone_scope(freeze=False):
-            l = resnet_group('group3', image, resnet_bottleneck, 512, num_block, 2)
-            return l
+    with backbone_scope(freeze=False):
+        l = resnet_group('group3', image, resnet_bottleneck, 512, num_block, 2)
+        return l
 
 
 # another c5 block for attr respective

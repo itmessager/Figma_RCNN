@@ -105,7 +105,7 @@ class ResNetC4Model(DetectionModel):
         # rpn_box_logits: fHxfWxNAx4
         anchors = RPNAnchors(get_all_anchors(), inputs['anchor_labels'], inputs['anchor_boxes'])
         # anchor_boxes is Groundtruth boxes corresponding to each anchor
-        anchors = anchors.narrow_to(featuremap)  # ??
+        anchors = anchors.narrow_to(featuremap)
         image_shape2d = tf.shape(image)[2:]  # h,w
         pred_boxes_decoded = anchors.decode_logits(rpn_box_logits)  # fHxfWxNAx4, floatbox
 
@@ -125,9 +125,9 @@ class ResNetC4Model(DetectionModel):
         feature_fastrcnn = resnet_conv5(roi_resized,
                                         cfg.BACKBONE.RESNET_NUM_BLOCK[-1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
         # Keep C5 feature to be shared with mask branch
-        feature_gap = GlobalAvgPooling('gap', feature_fastrcnn, data_format='channels_first')  # ??
+        feature_gap = GlobalAvgPooling('gap', feature_fastrcnn, data_format='channels_first')
 
-        fastrcnn_label_logits, fastrcnn_box_logits = fastrcnn_outputs('fastrcnn', feature_gap, cfg.DATA.NUM_CLASS)  # ??
+        fastrcnn_label_logits, fastrcnn_box_logits = fastrcnn_outputs('fastrcnn', feature_gap, cfg.DATA.NUM_CLASS)
         # Returns:
         # cls_logits: Tensor("fastrcnn/class/output:0", shape=(n, 81), dtype=float32)
         # reg_logits: Tensor("fastrcnn/output_box:0", shape=(n, 81, 4), dtype=float32)

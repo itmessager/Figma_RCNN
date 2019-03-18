@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 import tensorpack.utils.viz as tpviz
-from skimage.util import crop
 
 from detection.tensorpacks.viz import draw_final_outputs
 from detection.core.detector import AbstractDetector
@@ -38,8 +37,7 @@ def detect_one_image(img, model_func):
     boxes = boxes / scale
     # boxes are already clipped inside the graph, but after the floating point scaling, this may not be true any more.
     boxes = clip_boxes(boxes, orig_shape)
-    # if masks:
-    # has mask
+
     full_masks = [fill_full_mask(box, mask, orig_shape)
                   for box, mask in zip(boxes, masks)]
     masks = full_masks
@@ -49,8 +47,6 @@ def detect_one_image(img, model_func):
                                                       attrs[8], attrs[9], attrs[10], attrs[11],
                                                       attrs[12], attrs[13])]
     return results
-
-
 
 
 def detect_person(img, model_func):
@@ -73,7 +69,7 @@ def detect_person(img, model_func):
     boxes, probs, labels, masks, *_ = model_func(resized_img)
     # crop_imgs = [resized_img[box[1]:box[3], box[0]:box[2]] for box in boxes.astype(np.int)]
     results = []
-    i=0
+    i = 0
     for box, label, prob, mask in zip(boxes.astype(np.int), labels, probs, masks):
 
         crop_img = resized_img[box[1]:box[3], box[0]:box[2]]
@@ -84,7 +80,6 @@ def detect_person(img, model_func):
         _, _, _, _, *attrs = model_func(resized_img_black)
         if len(attrs[0]) == 0:
             print("Error")
-        print("OK")
         box = box / scale
         box = clip_boxes(box, orig_shape)
         mask = fill_full_mask(box, mask, orig_shape)
@@ -94,7 +89,7 @@ def detect_person(img, model_func):
                                  attrs[8][0], attrs[9][0], attrs[10][0], attrs[11][0],
                                  attrs[12][0], attrs[13][0])
         results.append(result)
-        i+=1
+        i += 1
     return results
 
 
@@ -112,10 +107,7 @@ def segmentation(crop_img, mask):
     mask = (cv2.resize(mask, (w, h)) > 0.5).astype('uint8')
     for i in range(3):
         seg_img[:, :, i] = mask * crop_img[:, :, i]
-    return seg_img if np.sum(mask) >= 6000 else crop_img
-
-
-
+    return seg_img if np.sum(mask) >= 20000 or np.sum(mask) / (h * w) >= 0.6 else crop_img
 
 
 class TensorPackDetector(AbstractDetector):
@@ -180,8 +172,6 @@ if __name__ == '__main__':
     final = draw_final_outputs(img, results)  # image contain boxes,labels and scores
     viz = np.concatenate((img, final), axis=1)
     tpviz.interactive_imshow(viz)
-
-
 
 '''
 --image

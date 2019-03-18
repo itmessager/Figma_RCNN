@@ -137,12 +137,6 @@ def attr_output(name, feature):
     return attr
 
 
-# 2048-->2
-# def attr_output(name, feature):
-#     attr = FullyConnected(name, feature, 2,
-#                           kernel_initializer=tf.random_normal_initializer(stddev=0.01))
-#     return attr
-
 def attrs_predict(feature):
     """
     Attribute network branchs
@@ -192,15 +186,11 @@ def logits_to_predict(attr_logits, name=None):
         return predict_label
 
 
-# @under_name_scope()
 def all_attrs_losses(attr_labels, attr_logits):
     """
     Args:
-        labels: n,
-        label_logits: nxC
-        fg_boxes: nfgx4, encoded
-        fg_box_logits: nfgxCx4 or nfgx1x4 if class agnostic
-
+        :param attr_logits: n,
+        :param attr_labels: nxC
     Returns:
         label_loss, box_loss
     """
@@ -222,8 +212,6 @@ def all_attrs_losses(attr_labels, attr_logits):
     return attrs_loss
 
 
-learn = tf.contrib.learn
-
 def attr_losses(attr_name, labels, logits):
     """
     Args:
@@ -238,7 +226,7 @@ def attr_losses(attr_name, labels, logits):
 
     specific_loss = tf.nn.sigmoid_cross_entropy_with_logits(
         labels=tf.to_float(specific_labels), logits=specific_logits)
-    specific_loss_mean = tf.reduce_mean(specific_loss)
+    specific_loss_mean = tf.reduce_mean(specific_loss) * 0.1
 
     # the second num of logits is to determine whether the attribute is positive or negative
     # only use the recognizable attribute to train the second num of logits
@@ -251,7 +239,7 @@ def attr_losses(attr_name, labels, logits):
 
     attr_loss = tf.nn.sigmoid_cross_entropy_with_logits(
         labels=tf.to_float(valid_attr_labels), logits=valid_attr_logits)
-    attr_loss_sum = tf.reduce_sum(attr_loss)
+    attr_loss_sum = tf.reduce_sum(attr_loss) * 0.1
     # attr_loss_sum = tf.reduce_mean(attr_loss, name='attr_loss')
     loss_sum = tf.add_n([attr_loss_sum, specific_loss_mean], name='{}_loss'.format(attr_name))
     prediction = convert2D(tf.gather(attribute_logits, valid_inds))
@@ -293,20 +281,20 @@ def fastrcnn_outputs(feature, num_classes, class_agnostic_regression=False):
     """
 
     # cls
-    with varreplace.freeze_variables(stop_gradient=False, skip_collection=True):
-        classification = FullyConnected(
-            'class', feature, num_classes,
-            kernel_initializer=tf.random_normal_initializer(stddev=0.01))
 
-        num_classes_for_box = 1 if class_agnostic_regression else num_classes
+    classification = FullyConnected(
+        'class', feature, num_classes,
+        kernel_initializer=tf.random_normal_initializer(stddev=0.01))
 
-        # reg
-        box_regression = FullyConnected(
-            'box', feature, num_classes_for_box * 4,
-            kernel_initializer=tf.random_normal_initializer(stddev=0.001))
-        box_regression = tf.reshape(box_regression, (-1, num_classes_for_box, 4), name='output_box')
+    num_classes_for_box = 1 if class_agnostic_regression else num_classes
 
-        return classification, box_regression
+    # reg
+    box_regression = FullyConnected(
+        'box', feature, num_classes_for_box * 4,
+        kernel_initializer=tf.random_normal_initializer(stddev=0.001))
+    box_regression = tf.reshape(box_regression, (-1, num_classes_for_box, 4), name='output_box')
+
+    return classification, box_regression
 
 
 @under_name_scope()
@@ -526,8 +514,7 @@ class FastRCNNHead(object):
     """
     A class to process & decode inputs/outputs of a fastrcnn classification+regression head.
     """
-
-    def __init__(self, proposal_boxes, box_logits, label_logits, bbox_regression_weights):
+    def __init__(self, proposals, box_logits, label_logits, bbox_regression_weights):
         """
         Args:
             proposals: BoxProposals
@@ -535,18 +522,78 @@ class FastRCNNHead(object):
             label_logits: Nx#class, the output of the head
             bbox_regression_weights: a 4 element tensor
         """
-        for k, v in locals().items():  # locals is a dict
+        for k, v in locals().items():   # locals is a dict
             if k != 'self' and v is not None:
                 setattr(self, k, v)
         self._bbox_class_agnostic = int(box_logits.shape[1]) == 1
 
     @memoized
+    def fg_box_logits(self):
+        """ Returns: #fg x ? x 4 """
+        return tf.gather(self.box_logits, self.proposals.fg_inds(), name='fg_box_logits')
+
+    @memoized
+    def losses(self):
+        encoded_fg_gt_boxes = encode_bbox_target(
+            self.proposals.matched_gt_boxes(),
+            self.proposals.fg_boxes()) * self.bbox_regression_weights
+        return fastrcnn_losses(
+            self.proposals.labels, self.label_logits,
+            encoded_fg_gt_boxes, self.fg_box_logits()
+        )
+
+    @memoized
     def decoded_output_boxes(self):
         """ Returns: N x #class x 4 """
-        anchors = tf.tile(tf.expand_dims(self.proposal_boxes, 1),
-                          [1, cfg.DATA.NUM_CLASS, 1])  # N x #class x 4
+        anchors = tf.tile(tf.expand_dims(self.proposals.boxes, 1),
+                          [1, cfg.DATA.NUM_CLASS, 1])   # N x #class x 4
         decoded_boxes = decode_bbox_target(
-            self.box_logits / self.bbox_regression_weights,  # [10., 10., 5., 5.]
+            self.box_logits / self.bbox_regression_weights,
             anchors
         )
-        return decoded_boxes  # pre_boxes_on_images
+        return decoded_boxes   # pre_boxes_on_images
+
+    @memoized
+    def decoded_output_boxes_for_true_label(self):
+        """ Returns: Nx4 decoded boxes """
+        return self._decoded_output_boxes_for_label(self.proposals.labels)
+
+    @memoized
+    def decoded_output_boxes_for_predicted_label(self):
+        """ Returns: Nx4 decoded boxes """
+        return self._decoded_output_boxes_for_label(self.predicted_labels())
+
+    @memoized
+    def decoded_output_boxes_for_label(self, labels):
+        assert not self._bbox_class_agnostic
+        indices = tf.stack([
+            tf.range(tf.size(labels, out_type=tf.int64)),
+            labels
+        ])
+        needed_logits = tf.gather_nd(self.box_logits, indices)
+        decoded = decode_bbox_target(
+            needed_logits / self.bbox_regression_weights,
+            self.proposals.boxes
+        )
+        return decoded
+
+    @memoized
+    def decoded_output_boxes_class_agnostic(self):
+        """ Returns: Nx4 """
+        assert self._bbox_class_agnostic
+        box_logits = tf.reshape(self.box_logits, [-1, 4])
+        decoded = decode_bbox_target(
+            box_logits / self.bbox_regression_weights,
+            self.proposals.boxes
+        )
+        return decoded
+
+    @memoized
+    def output_scores(self, name=None):
+        """ Returns: N x #class scores, summed to one for each box."""
+        return tf.nn.softmax(self.label_logits, name=name)
+
+    @memoized
+    def predicted_labels(self):
+        """ Returns: N ints """
+        return tf.argmax(self.label_logits, axis=1, name='predicted_labels')

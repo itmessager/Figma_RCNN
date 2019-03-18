@@ -28,10 +28,6 @@ class _COCOMeta(object):
         'test2014': 'test2014',
         'train2017': 'train2017',
         'val2017': 'val2017',
-        'WIDER_val': 'WIDER_val/images',
-        'WIDER_train': 'WIDER_train/images',
-        'CelebA_train': 'img_celeba',
-        'CelebA_val': 'img_celeba'
     }
 
     def valid(self):

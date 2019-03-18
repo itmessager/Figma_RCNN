@@ -178,6 +178,8 @@ class RPNAnchors(namedtuple('_RPNAnchors', ['boxes', 'gt_labels', 'gt_boxes'])):
     gt_labels (FS x FS x NA): gt_labels corresponding to each anchor.
     gt_boxes (FS x FS x NA x 4): gt_boxes corresponding to each anchor.
     """
+    def encoded_gt_boxes(self):   #
+        return encode_bbox_target(self.gt_boxes, self.boxes)   # anchors.encode(gt_boxes)   --> logits
 
     def decode_logits(self, logits):
         return decode_bbox_target(logits, self.boxes)   # anchors.decode(logits)  --> pre_boxes
@@ -194,6 +196,9 @@ class RPNAnchors(namedtuple('_RPNAnchors', ['boxes', 'gt_labels', 'gt_boxes'])):
         gt_labels = tf.slice(self.gt_labels, [0, 0, 0], slice3d)
         gt_boxes = tf.slice(self.gt_boxes, [0, 0, 0, 0], slice4d)
         return RPNAnchors(boxes, gt_labels, gt_boxes)
+
+
+
 
 
 if __name__ == '__main__':

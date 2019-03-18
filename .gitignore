@@ -3,7 +3,6 @@
 
 # Result and models
 results*
-models
 output
 *.pth
 train_log/
@@ -20,6 +19,5 @@ text.py
 test.py
 logfile
 logdir*
-transport_person_to_face_json.py
-transport_person_to_face_json_new
+
 

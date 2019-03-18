@@ -38,7 +38,7 @@ from detection.tensorpacks import model_frcnn
 from detection.tensorpacks import model_mrcnn
 from detection.tensorpacks.model_frcnn import (
     sample_fast_rcnn_targets, fastrcnn_outputs,
-    fastrcnn_predictions, BoxProposals, FastRCNNHead)
+    fastrcnn_predictions, BoxProposals, FastRCNNHead, attrs_head, attrs_predict, all_attrs_losses)
 from detection.tensorpacks.model_mrcnn import maskrcnn_upXconv_head, maskrcnn_loss
 from detection.tensorpacks.model_rpn import rpn_head, rpn_losses, generate_rpn_proposals
 from detection.tensorpacks.model_fpn import (
@@ -50,12 +50,12 @@ from detection.tensorpacks.model_box import (
 
 from detection.tensorpacks.data import (
     get_train_dataflow, get_eval_dataflow,
-    get_all_anchors, get_all_anchors_fpn)
+    get_all_anchors, get_all_anchors_fpn, get_wider_dataflow)
 from detection.tensorpacks.viz import (
     draw_annotation, draw_proposal_recall,
     draw_predictions, draw_final_outputs)
 from detection.tensorpacks.eval import (
-    eval_coco, detect_one_image, print_evaluation_scores, DetectionResult)
+eval_coco, detect_one_image, print_evaluation_scores, DetectionResult)
 from detection.config.tensorpack_config import finalize_configs, config as cfg
 
 
@@ -101,7 +101,23 @@ class ResNetC4Model(DetectionModel):
             # box of each ground truth
             tf.placeholder(tf.float32, (None, 4), 'gt_boxes'),
             # label of each ground truth
-            tf.placeholder(tf.int64, (None,), 'gt_labels')]  # all > 0
+            tf.placeholder(tf.int64, (None,), 'gt_labels'),
+
+            tf.placeholder(tf.int64, (None,), 'male'),
+            tf.placeholder(tf.int64, (None,), 'longhair'),
+            tf.placeholder(tf.int64, (None,), 'sunglass'),
+            tf.placeholder(tf.int64, (None,), 'hat'),
+            tf.placeholder(tf.int64, (None,), 'tshirt'),
+            tf.placeholder(tf.int64, (None,), 'longsleeve'),
+            tf.placeholder(tf.int64, (None,), 'formal'),
+            tf.placeholder(tf.int64, (None,), 'shorts'),
+            tf.placeholder(tf.int64, (None,), 'jeans'),
+            tf.placeholder(tf.int64, (None,), 'longpants'),
+            tf.placeholder(tf.int64, (None,), 'skirt'),
+            tf.placeholder(tf.int64, (None,), 'facemask'),
+            tf.placeholder(tf.int64, (None,), 'logo'),
+            tf.placeholder(tf.int64, (None,), 'stripe')]
+
         if cfg.MODE_MASK:
             ret.append(
                 tf.placeholder(tf.uint8, (None, None, None), 'gt_masks')
@@ -150,11 +166,12 @@ class ResNetC4Model(DetectionModel):
         # ROI_align
         roi_resized = roi_align(featuremap, boxes_on_featuremap, 14)   #14x14 for each roi
 
+
         feature_fastrcnn = resnet_conv5(roi_resized, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
         # Keep C5 feature to be shared with mask branch
-        feature_gap = GlobalAvgPooling('gap', feature_fastrcnn, data_format='channels_first') # ??
+        feature_gap = GlobalAvgPooling('gap', feature_fastrcnn, data_format='channels_first')
 
-        fastrcnn_label_logits, fastrcnn_box_logits = fastrcnn_outputs('fastrcnn', feature_gap, cfg.DATA.NUM_CLASS) # ??
+        fastrcnn_label_logits, fastrcnn_box_logits = fastrcnn_outputs('fastrcnn', feature_gap, cfg.DATA.NUM_CLASS)
         # Returns:
         # cls_logits: N x num_class classification logits   2-D
         # reg_logits: N x num_class x 4 or Nx2x4 if class agnostic  3-D
@@ -162,8 +179,18 @@ class ResNetC4Model(DetectionModel):
         # ------------------Fastrcnn_Head------------------------
         fastrcnn_head = FastRCNNHead(proposals, fastrcnn_box_logits, fastrcnn_label_logits,  #
                                      tf.constant(cfg.FRCNN.BBOX_REG_WEIGHTS, dtype=tf.float32))  # [10., 10., 5., 5.]
+
+        # build attribute branch
+        boxes_on_featuremap_ = gt_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
+        roi_resized_ = roi_align(featuremap, boxes_on_featuremap_, 14)
+        feature_attributes = resnet_conv5(roi_resized_, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
+        feature_gap_ = GlobalAvgPooling('gap', feature_attributes, data_format='channels_first')
+        attrs_logits = attrs_head('attrs', feature_gap_)
+
         if is_training:
-            all_losses = []
+            # attributes loss
+            attrs_losses = all_attrs_losses(inputs, attrs_logits)
+            all_losses = [attrs_losses]
             # rpn loss  = label_loss, box_loss
             all_losses.extend(rpn_losses(
                 anchors.gt_labels, anchors.encoded_gt_boxes(), rpn_label_logits, rpn_box_logits))
@@ -202,6 +229,8 @@ class ResNetC4Model(DetectionModel):
             label_scores = fastrcnn_head.output_scores(name='fastrcnn_all_scores')
             final_boxes, final_scores, final_labels = fastrcnn_predictions(
                 decoded_boxes, label_scores, name_scope='output')
+            # attributes results
+            attrs_labels = attrs_predict(feature_gap_)
 
             if cfg.MODE_MASK:
                 roi_resized = roi_align(featuremap, final_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE), 14)
@@ -409,13 +438,13 @@ def visualize(model, model_path, nr_visualize=100, output_dir='output'):
             pbar.update()
 
 
-def offline_evaluate(pred_func, output_file):
-    df = get_eval_dataflow()
-    all_results = eval_coco(
-        df, lambda img: detect_one_image(img, pred_func))
-    with open(output_file, 'w') as f:
-        json.dump(all_results, f)
-    print_evaluation_scores(output_file)
+# def offline_evaluate(pred_func, output_file):
+#     df = get_eval_dataflow()
+#     all_results = eval_coco(
+#         df, lambda img: detect_one_image(img, pred_func))
+#     with open(output_file, 'w') as f:
+#         json.dump(all_results, f)
+#     print_evaluation_scores(output_file)
 
 
 def predict(pred_func, input_file):
@@ -554,7 +583,7 @@ if __name__ == '__main__':
                 output_names=MODEL.get_inference_tensor_names()[1]))
             if args.evaluate:
                 assert args.evaluate.endswith('.json'), args.evaluate
-                offline_evaluate(pred, args.evaluate)
+                # offline_evaluate(pred, args.evaluate)
             elif args.predict:
                 COCODetection(cfg.DATA.BASEDIR, 'val2014')  # Only to load the class names into caches
                 predict(pred, args.predict)
@@ -585,7 +614,7 @@ if __name__ == '__main__':
                 (steps * factor // stepnum, cfg.TRAIN.BASE_LR * mult))
         logger.info("Warm Up Schedule (steps, value): " + str(warmup_schedule))
         logger.info("LR Schedule (epochs, value): " + str(lr_schedule))
-        train_dataflow = get_train_dataflow()   # get the coco datasets
+        train_dataflow = get_wider_dataflow()   # get the wider datasets
         # This is what's commonly referred to as "epochs"
         total_passes = cfg.TRAIN.LR_SCHEDULE[-1] * 8 / train_dataflow.size()
         logger.info("Total passes of the training set is: {}".format(total_passes))
@@ -598,7 +627,7 @@ if __name__ == '__main__':
             ScheduledHyperParamSetter(
                 'learning_rate', warmup_schedule, interp='linear', step_based=True),
             ScheduledHyperParamSetter('learning_rate', lr_schedule),
-            EvalCallback(*MODEL.get_inference_tensor_names()),
+            # EvalCallback(*MODEL.get_inference_tensor_names()),
             PeakMemoryTracker(),
             EstimatedTimeLeft(median=True),
             SessionRunTimeout(60000).set_chief_only(True),  # 1 minute timeout
@@ -630,3 +659,32 @@ if __name__ == '__main__':
 
         # start train
         launch_train_with_config(traincfg, trainer)
+
+
+
+'''
+
+--config
+MODE_MASK=False
+FRCNN.BATCH_PER_IM=64
+PREPROC.SHORT_EDGE_SIZE=600
+PREPROC.MAX_SIZE=1024
+TRAIN.LR_SCHEDULE=[150000,230000,280000]
+BACKBONE.WEIGHTS=/root/datasets/COCO-R50C4-MaskRCNN-Standard.npz
+DATA.BASEDIR=/root/datasets/COCO/DIR/
+
+
+'''
+
+
+'''
+
+--predict 
+/root/datasetsimg-folder/1.jpg
+--load
+/home/Figma_RCNN/detection/tensorpacks/train_log/maskrcnn/checkpoint
+--config 
+MODE_MASK=False
+
+
+'''
