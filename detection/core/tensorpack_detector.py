@@ -22,7 +22,7 @@ class TensorPackDetector(AbstractDetector):
             model=MODEL,
             session_init=get_model_loader(weight_file),
             input_names=['image'],
-            output_names=['person_boxes', 'person_scores', 'person_labels', 'person_masks',
+            output_names=['person_boxes', 'person_scores', 'person_labels',
                           'male_predict', 'longhair_predict', 'sunglass_predict',
                           'hat_predict', 'tshirt_predict', 'longsleeve_predict',
                           'formal_predict', 'shorts_predict', 'jeans_predict',

@@ -22,6 +22,5 @@ class PersonAttrs:
 class PersonBoxes:
     def __init__(self, box):
         self.body_box = box.box
-        self.body_mask = box.mask
         self.body_score = box.score
-        self.id = np.random.randint(1, 20)
+        self.id = box.class_id

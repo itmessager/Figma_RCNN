@@ -69,15 +69,8 @@ def draw_tracked_people(img_bgr, tracked_people):
             xmin, ymin, xmax, ymax = person.body_box
             draw_bounding_box_on_image_array(img_rgb, ymin, xmin, ymax, xmax, color=color, thickness=2,
                                              display_str_list=[
-                                                 'ID:{}  Score:{:.2f}'.format(person.id, person.body_score)],
+                                                 'Class:{}  Score:{:.2f}'.format(person.id, person.body_score)],
                                              use_normalized_coordinates=False)
-        # if person.face_box is not None:
-        #     xmin, ymin, xmax, ymax = person.face_box
-        #     draw_bounding_box_on_image_array(img_rgb, ymin, xmin, ymax, xmax, color=color, thickness=2,
-        #                                      display_str_list=['Score:{:.2f}'.format(person.face_score)],
-        #                                      use_normalized_coordinates=False)
-        if person.body_mask is not None:
-            draw_mask_on_image_array(img_rgb, person.body_mask, color=color)
 
     return cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
 

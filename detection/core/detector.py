@@ -6,7 +6,7 @@ from collections import namedtuple
 
 DetectionResult = namedtuple(
     'DetectionResult',
-    ['box', 'score', 'class_id', 'mask', 'male', 'longhair',
+    ['box', 'score', 'class_id', 'male', 'longhair',
      'sunglass', 'hat', 'tshirt', 'longsleeve', 'formal', 'shorts',
      'jeans', 'skirt', 'facemask', 'logo', 'stripe', 'longpants'])
 """

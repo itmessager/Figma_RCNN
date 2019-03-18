@@ -510,11 +510,13 @@ class BoxProposals(object):
         return tf.gather(self.gt_boxes, self.fg_inds_wrt_gt)  #
 
 
+
 class FastRCNNHead(object):
     """
     A class to process & decode inputs/outputs of a fastrcnn classification+regression head.
     """
-    def __init__(self, proposals, box_logits, label_logits, bbox_regression_weights):
+
+    def __init__(self, proposal_boxes, box_logits, label_logits, bbox_regression_weights):
         """
         Args:
             proposals: BoxProposals
@@ -522,78 +524,18 @@ class FastRCNNHead(object):
             label_logits: Nx#class, the output of the head
             bbox_regression_weights: a 4 element tensor
         """
-        for k, v in locals().items():   # locals is a dict
+        for k, v in locals().items():  # locals is a dict
             if k != 'self' and v is not None:
                 setattr(self, k, v)
         self._bbox_class_agnostic = int(box_logits.shape[1]) == 1
 
     @memoized
-    def fg_box_logits(self):
-        """ Returns: #fg x ? x 4 """
-        return tf.gather(self.box_logits, self.proposals.fg_inds(), name='fg_box_logits')
-
-    @memoized
-    def losses(self):
-        encoded_fg_gt_boxes = encode_bbox_target(
-            self.proposals.matched_gt_boxes(),
-            self.proposals.fg_boxes()) * self.bbox_regression_weights
-        return fastrcnn_losses(
-            self.proposals.labels, self.label_logits,
-            encoded_fg_gt_boxes, self.fg_box_logits()
-        )
-
-    @memoized
     def decoded_output_boxes(self):
         """ Returns: N x #class x 4 """
-        anchors = tf.tile(tf.expand_dims(self.proposals.boxes, 1),
-                          [1, cfg.DATA.NUM_CLASS, 1])   # N x #class x 4
+        anchors = tf.tile(tf.expand_dims(self.proposal_boxes, 1),
+                          [1, cfg.DATA.NUM_CLASS, 1])  # N x #class x 4
         decoded_boxes = decode_bbox_target(
-            self.box_logits / self.bbox_regression_weights,
+            self.box_logits / self.bbox_regression_weights,  # [10., 10., 5., 5.]
             anchors
         )
-        return decoded_boxes   # pre_boxes_on_images
-
-    @memoized
-    def decoded_output_boxes_for_true_label(self):
-        """ Returns: Nx4 decoded boxes """
-        return self._decoded_output_boxes_for_label(self.proposals.labels)
-
-    @memoized
-    def decoded_output_boxes_for_predicted_label(self):
-        """ Returns: Nx4 decoded boxes """
-        return self._decoded_output_boxes_for_label(self.predicted_labels())
-
-    @memoized
-    def decoded_output_boxes_for_label(self, labels):
-        assert not self._bbox_class_agnostic
-        indices = tf.stack([
-            tf.range(tf.size(labels, out_type=tf.int64)),
-            labels
-        ])
-        needed_logits = tf.gather_nd(self.box_logits, indices)
-        decoded = decode_bbox_target(
-            needed_logits / self.bbox_regression_weights,
-            self.proposals.boxes
-        )
-        return decoded
-
-    @memoized
-    def decoded_output_boxes_class_agnostic(self):
-        """ Returns: Nx4 """
-        assert self._bbox_class_agnostic
-        box_logits = tf.reshape(self.box_logits, [-1, 4])
-        decoded = decode_bbox_target(
-            box_logits / self.bbox_regression_weights,
-            self.proposals.boxes
-        )
-        return decoded
-
-    @memoized
-    def output_scores(self, name=None):
-        """ Returns: N x #class scores, summed to one for each box."""
-        return tf.nn.softmax(self.label_logits, name=name)
-
-    @memoized
-    def predicted_labels(self):
-        """ Returns: N ints """
-        return tf.argmax(self.label_logits, axis=1, name='predicted_labels')
+        return decoded_boxes  # pre_boxes_on_images
