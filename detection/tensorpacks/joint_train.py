@@ -84,7 +84,13 @@ class DetectionModel(ModelDesc):
             [str]: input names
             [str]: output names
         """
-        out = ['output/boxes', 'output/scores', 'output/labels']
+        out = ['person_boxes', 'person_scores', 'person_labels',
+               'male_predict', 'longhair_predict', 'sunglass_predict',
+               'hat_predict', 'tshirt_predict', 'longsleeve_predict',
+               'formal_predict', 'shorts_predict', 'jeans_predict',
+               'skirt_predict', 'facemask_predict', 'logo_predict',
+               'stripe_predict', 'longpants_predict'
+               ]
         if cfg.MODE_MASK:
             out.append('output/masks')
         return ['image'], out
@@ -103,6 +109,7 @@ class ResNetC4Model(DetectionModel):
             # label of each ground truth
             tf.placeholder(tf.int64, (None,), 'gt_labels'),
 
+            # 14 attributes for each ground truth
             tf.placeholder(tf.int64, (None,), 'male'),
             tf.placeholder(tf.int64, (None,), 'longhair'),
             tf.placeholder(tf.int64, (None,), 'sunglass'),
@@ -177,7 +184,7 @@ class ResNetC4Model(DetectionModel):
         # reg_logits: N x num_class x 4 or Nx2x4 if class agnostic  3-D
 
         # ------------------Fastrcnn_Head------------------------
-        fastrcnn_head = FastRCNNHead(proposals, fastrcnn_box_logits, fastrcnn_label_logits,  #
+        fastrcnn_head = FastRCNNHead(proposals.boxes, fastrcnn_box_logits, fastrcnn_label_logits,  #
                                      tf.constant(cfg.FRCNN.BBOX_REG_WEIGHTS, dtype=tf.float32))  # [10., 10., 5., 5.]
 
         # build attribute branch
@@ -198,24 +205,6 @@ class ResNetC4Model(DetectionModel):
             # fastrcnn loss
             all_losses.extend(fastrcnn_head.losses())
 
-            if cfg.MODE_MASK:
-
-                # maskrcnn loss
-                # In training, mask branch shares the same C5 feature.
-                fg_feature = tf.gather(feature_fastrcnn, proposals.fg_inds())  # positive samples in proposal
-                mask_logits = maskrcnn_upXconv_head(    # 7x7 up to 14*14
-                    'maskrcnn', fg_feature, cfg.DATA.NUM_CATEGORY, num_convs=0)  # #fg x #cat x 14x14
-
-                target_masks_for_fg = crop_and_resize(
-                    tf.expand_dims(inputs['gt_masks'], 1),
-                    proposals.fg_boxes(),
-                    proposals.fg_inds_wrt_gt,
-                    14,
-                    pad_border=False)  # nfg x 1x14x14
-
-                target_masks_for_fg = tf.squeeze(target_masks_for_fg, 1, 'sampled_fg_mask_targets')
-                all_losses.append(maskrcnn_loss(mask_logits, proposals.fg_labels(), target_masks_for_fg))
-
             wd_cost = regularize_cost(
                 '.*/W', l2_regularizer(cfg.TRAIN.WEIGHT_DECAY), name='wd_cost')
             all_losses.append(wd_cost)
@@ -229,17 +218,21 @@ class ResNetC4Model(DetectionModel):
             label_scores = fastrcnn_head.output_scores(name='fastrcnn_all_scores')
             final_boxes, final_scores, final_labels = fastrcnn_predictions(
                 decoded_boxes, label_scores, name_scope='output')
-            # attributes results
-            attrs_labels = attrs_predict(feature_gap_)
 
-            if cfg.MODE_MASK:
-                roi_resized = roi_align(featuremap, final_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE), 14)
-                feature_maskrcnn = resnet_conv5(roi_resized, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
-                mask_logits = maskrcnn_upXconv_head(
-                    'maskrcnn', feature_maskrcnn, cfg.DATA.NUM_CATEGORY, 0)  # #result x #cat x 14x14
-                indices = tf.stack([tf.range(tf.size(final_labels)), tf.to_int32(final_labels) - 1], axis=1)
-                final_mask_logits = tf.gather_nd(mask_logits, indices)  # #resultx14x14
-                tf.sigmoid(final_mask_logits, name='output/masks')
+            person_slice = tf.where(final_labels <= 1)
+            person_labels = tf.gather(final_labels, person_slice)
+            final_person_labels = tf.reshape(person_labels, (-1,), name='person_labels')
+
+            person_boxes = tf.gather(final_boxes, person_slice)
+            final_person_boxes = tf.reshape(person_boxes, (-1, 4), name='person_boxes')
+
+            person_scores = tf.gather(final_scores, person_slice)
+            tf.reshape(person_scores, (-1,), name='person_scores')
+
+            person_roi_resized = roi_align(featuremap, final_person_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE), 14)
+            feature_attrs = resnet_conv5(person_roi_resized, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
+            feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  #
+            attrs_labels = attrs_predict(feature_attrs_gap)
 
 class ResNetFPNModel(DetectionModel):
 
@@ -438,13 +431,13 @@ def visualize(model, model_path, nr_visualize=100, output_dir='output'):
             pbar.update()
 
 
-# def offline_evaluate(pred_func, output_file):
-#     df = get_eval_dataflow()
-#     all_results = eval_coco(
-#         df, lambda img: detect_one_image(img, pred_func))
-#     with open(output_file, 'w') as f:
-#         json.dump(all_results, f)
-#     print_evaluation_scores(output_file)
+def offline_evaluate(pred_func, output_file):
+    df = get_eval_dataflow()
+    all_results = eval_coco(
+        df, lambda img: detect_one_image(img, pred_func))
+    with open(output_file, 'w') as f:
+        json.dump(all_results, f)
+    print_evaluation_scores(output_file)
 
 
 def predict(pred_func, input_file):

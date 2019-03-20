@@ -539,3 +539,7 @@ class FastRCNNHead(object):
             anchors
         )
         return decoded_boxes  # pre_boxes_on_images
+    @memoized
+    def output_scores(self, name=None):
+        """ Returns: N x #class scores, summed to one for each box."""
+        return tf.nn.softmax(self.label_logits, name=name)

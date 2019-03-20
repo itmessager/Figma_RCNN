@@ -497,8 +497,7 @@ def get_wider_dataflow(augment=False):
 
     logger.info("loading wider attributes dataset...")
     roidbs_train = load_many('/root/datasets/wider attribute', 'train', augment)
-    roidbs_val = load_many('/root/datasets/wider attribute', 'val', augment)
-    roidbs = roidbs_train + roidbs_val
+    roidbs = roidbs_train
     logger.info("load finished!")
     """
     To train on your own data, change this to your loader.
@@ -715,6 +714,33 @@ def get_eval_dataflow(shard=0, num_shards=1):
     ds = MapDataComponent(ds, f, 0)
     # Evaluation itself may be multi-threaded, therefore don't add prefetch here.
     return ds
+
+
+def get_wider_eval_dataflow(shard=0, num_shards=1, augment=False):
+    """
+    Args:
+        shard, num_shards: to get subset of evaluation data
+    """
+    roidbs_val = load_many('/root/datasets/wider attribute', 'val', augment)
+    roidbs = roidbs_val
+    # for key in roidbs[4].keys():
+    #     print(key)
+    num_imgs = len(roidbs)
+    img_per_shard = num_imgs // num_shards
+    img_range = (shard * img_per_shard, (shard + 1) * img_per_shard if shard + 1 < num_shards else num_imgs)
+
+    # no filter for training
+    ds = DataFromListOfDict(roidbs[img_range[0]: img_range[1]], ['file_name', 'id'])
+
+    def f(fname):
+        im = cv2.imread(fname, cv2.IMREAD_COLOR)
+        assert im is not None, fname
+        return im
+
+    ds = MapDataComponent(ds, f, 0)
+    # Evaluation itself may be multi-threaded, therefore don't add prefetch here.
+    return ds
+
 
 
 if __name__ == '__main__':

@@ -110,12 +110,6 @@ def eval_coco(df, detect_func, tqdm_bar=None):
                     'score': round(float(r.score), 4),
                 }
 
-                # also append segmentation to results
-                if r.mask is not None:
-                    rle = cocomask.encode(
-                        np.array(r.mask[:, :, None], order='F'))[0]
-                    rle['counts'] = rle['counts'].decode('ascii')
-                    res['segmentation'] = rle
                 all_results.append(res)
             tqdm_bar.update(1)
     return all_results
