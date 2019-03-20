@@ -11,7 +11,7 @@ import numpy as np
 
 
 def make_dataset(root, subset):
-    assert subset in ['train', 'val', 'test.py']
+    assert subset in ['train', 'val', 'test']
 
     data = []
     attr_names = ['male', 'longhair', 'sunglass', 'hat', 'tshirt', 'longsleeve', 'formal', 'shorts', 'jeans',

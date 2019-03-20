@@ -133,7 +133,8 @@ class ResNetC4Model(DetectionModel):
         # reg_logits: Tensor("fastrcnn/output_box:0", shape=(n, 81, 4), dtype=float32)
 
         # ------------------Fastrcnn_Head------------------------
-        fastrcnn_head = FastRCNNHead(proposal_boxes, fastrcnn_box_logits, fastrcnn_label_logits,  #
+        proposals = BoxProposals(proposal_boxes)
+        fastrcnn_head = FastRCNNHead(proposals, fastrcnn_box_logits, fastrcnn_label_logits,  #
                                      tf.constant(cfg.FRCNN.BBOX_REG_WEIGHTS, dtype=tf.float32))  # [10., 10., 5., 5.]
 
         decoded_boxes = fastrcnn_head.decoded_output_boxes()  # pre_boxes_on_images

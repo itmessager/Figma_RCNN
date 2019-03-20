@@ -184,7 +184,7 @@ class ResNetC4Model(DetectionModel):
         # reg_logits: N x num_class x 4 or Nx2x4 if class agnostic  3-D
 
         # ------------------Fastrcnn_Head------------------------
-        fastrcnn_head = FastRCNNHead(proposals.boxes, fastrcnn_box_logits, fastrcnn_label_logits,  #
+        fastrcnn_head = FastRCNNHead(proposals, fastrcnn_box_logits, fastrcnn_label_logits, #
                                      tf.constant(cfg.FRCNN.BBOX_REG_WEIGHTS, dtype=tf.float32))  # [10., 10., 5., 5.]
 
         # build attribute branch

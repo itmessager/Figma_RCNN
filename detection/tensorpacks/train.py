@@ -586,7 +586,7 @@ if __name__ == '__main__':
 
         factor = 8. / cfg.TRAIN.NUM_GPUS
         for idx, steps in enumerate(cfg.TRAIN.LR_SCHEDULE[:-1]):
-            mult = 0.1 ** (idx + 1)
+            mult = 0.05 ** (idx + 1)
             lr_schedule.append(
                 (steps * factor // stepnum, cfg.TRAIN.BASE_LR * mult))
         logger.info("Warm Up Schedule (steps, value): " + str(warmup_schedule))

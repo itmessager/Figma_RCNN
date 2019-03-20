@@ -497,7 +497,8 @@ def get_wider_dataflow(augment=False):
 
     logger.info("loading wider attributes dataset...")
     roidbs_train = load_many('/root/datasets/wider attribute', 'train', augment)
-    roidbs = roidbs_train
+    roidbs_test = load_many('/root/datasets/wider attribute', 'test', augment)
+    roidbs = roidbs_train + roidbs_test
     logger.info("load finished!")
     """
     To train on your own data, change this to your loader.
