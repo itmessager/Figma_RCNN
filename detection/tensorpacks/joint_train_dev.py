@@ -38,7 +38,7 @@ from detection.tensorpacks import model_frcnn
 from detection.tensorpacks import model_mrcnn
 from detection.tensorpacks.model_frcnn import (
     sample_fast_rcnn_targets, fastrcnn_outputs,
-    fastrcnn_predictions, BoxProposals, FastRCNNHead, attrs_head, attrs_predict, all_attrs_losses, attr_losses)
+    fastrcnn_predictions, BoxProposals, FastRCNNHead, attrs_head, attrs_predict, all_attrs_losses, attr_losses_v2)
 from detection.tensorpacks.model_mrcnn import maskrcnn_upXconv_head, maskrcnn_loss
 from detection.tensorpacks.model_rpn import rpn_head, rpn_losses, generate_rpn_proposals
 from detection.tensorpacks.model_fpn import (
@@ -50,7 +50,7 @@ from detection.tensorpacks.model_box import (
 
 from detection.tensorpacks.data import (
     get_train_dataflow, get_eval_dataflow,
-    get_all_anchors, get_all_anchors_fpn, get_wider_dataflow)
+    get_all_anchors, get_all_anchors_fpn, get_wider_dataflow, get_coco_wider_dataflow)
 from detection.tensorpacks.viz import (
     draw_annotation, draw_proposal_recall,
     draw_predictions, draw_final_outputs)
@@ -196,7 +196,7 @@ class ResNetC4Model(DetectionModel):
 
         if is_training:
             # attributes loss
-            attrs_losses = all_attrs_losses(inputs, attrs_logits, attr_losses)
+            attrs_losses = all_attrs_losses(inputs, attrs_logits, attr_losses_v2)
             all_losses = [attrs_losses]
             # rpn loss  = label_loss, box_loss
             all_losses.extend(rpn_losses(
@@ -607,7 +607,7 @@ if __name__ == '__main__':
                 (steps * factor // stepnum, cfg.TRAIN.BASE_LR * mult))
         logger.info("Warm Up Schedule (steps, value): " + str(warmup_schedule))
         logger.info("LR Schedule (epochs, value): " + str(lr_schedule))
-        train_dataflow = get_wider_dataflow()   # get the wider datasets
+        train_dataflow = get_coco_wider_dataflow(False)   # get the wider datasets
         # This is what's commonly referred to as "epochs"
         total_passes = cfg.TRAIN.LR_SCHEDULE[-1] * 8 / train_dataflow.size()
         logger.info("Total passes of the training set is: {}".format(total_passes))

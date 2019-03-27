@@ -186,7 +186,7 @@ def logits_to_predict(attr_logits, name=None):
         return predict_label
 
 
-def all_attrs_losses(attr_labels, attr_logits):
+def all_attrs_losses(attr_labels, attr_logits,loss_function):
     """
     Args:
         :param attr_logits: n,
@@ -194,20 +194,20 @@ def all_attrs_losses(attr_labels, attr_logits):
     Returns:
         label_loss, box_loss
     """
-    attrs_loss = [attr_losses('male', attr_labels['male'], attr_logits['male']),
-                  attr_losses('longhair', attr_labels['longhair'], attr_logits['longhair']),
-                  attr_losses('sunglass', attr_labels['sunglass'], attr_logits['sunglass']),
-                  attr_losses('hat', attr_labels['hat'], attr_logits['hat']),
-                  attr_losses('tshirt', attr_labels['tshirt'], attr_logits['tshirt']),
-                  attr_losses('longsleeve', attr_labels['longsleeve'], attr_logits['longsleeve']),
-                  attr_losses('formal', attr_labels['formal'], attr_logits['formal']),
-                  attr_losses('shorts', attr_labels['shorts'], attr_logits['shorts']),
-                  attr_losses('jeans', attr_labels['jeans'], attr_logits['jeans']),
-                  attr_losses('skirt', attr_labels['skirt'], attr_logits['skirt']),
-                  attr_losses('facemask', attr_labels['facemask'], attr_logits['facemask']),
-                  attr_losses('logo', attr_labels['logo'], attr_logits['logo']),
-                  attr_losses('stripe', attr_labels['stripe'], attr_logits['stripe']),
-                  attr_losses('longpants', attr_labels['longpants'], attr_logits['longpants'])]
+    attrs_loss = [loss_function('male', attr_labels['male'], attr_logits['male']),
+                  loss_function('longhair', attr_labels['longhair'], attr_logits['longhair']),
+                  loss_function('sunglass', attr_labels['sunglass'], attr_logits['sunglass']),
+                  loss_function('hat', attr_labels['hat'], attr_logits['hat']),
+                  loss_function('tshirt', attr_labels['tshirt'], attr_logits['tshirt']),
+                  loss_function('longsleeve', attr_labels['longsleeve'], attr_logits['longsleeve']),
+                  loss_function('formal', attr_labels['formal'], attr_logits['formal']),
+                  loss_function('shorts', attr_labels['shorts'], attr_logits['shorts']),
+                  loss_function('jeans', attr_labels['jeans'], attr_logits['jeans']),
+                  loss_function('skirt', attr_labels['skirt'], attr_logits['skirt']),
+                  loss_function('facemask', attr_labels['facemask'], attr_logits['facemask']),
+                  loss_function('logo', attr_labels['logo'], attr_logits['logo']),
+                  loss_function('stripe', attr_labels['stripe'], attr_logits['stripe']),
+                  loss_function('longpants', attr_labels['longpants'], attr_logits['longpants'])]
     attrs_loss = tf.add_n(attrs_loss)
     return attrs_loss
 
@@ -226,7 +226,7 @@ def attr_losses(attr_name, labels, logits):
 
     specific_loss = tf.nn.sigmoid_cross_entropy_with_logits(
         labels=tf.to_float(specific_labels), logits=specific_logits)
-    specific_loss_mean = tf.reduce_mean(specific_loss) * 0.02
+    specific_loss_mean = tf.reduce_mean(specific_loss) * 0.05
 
     # the second num of logits is to determine whether the attribute is positive or negative
     # only use the recognizable attribute to train the second num of logits
@@ -257,6 +257,37 @@ def attr_losses(attr_name, labels, logits):
         average_precision = tf.identity(AP, name='{}_AP'.format(attr_name))
 
     add_moving_summary(loss_sum, accuracy, average_precision)
+
+    return loss_sum
+
+
+
+def attr_losses_v2(attr_name, labels, logits):
+    """
+    Args:
+        labels: n,[-1,0,1,1,0]
+        logits: nx2 [(0.4,0.6),(0.72,0.28),(0.84,0.16),(0.17,0.83),(0.49,0.51)]
+    Returns:
+        loss_sum:contain specific_loss and attr_loss
+    """
+    # the first num of logits is to determine whether the attribute is identifiable
+
+    valid_inds = tf.where(labels >= 0)
+    valid_labels = tf.reshape(tf.gather(labels, valid_inds), [-1])
+    valid_logits = tf.reshape(tf.gather(logits, valid_inds), (-1, 2))
+
+    loss = tf.losses.sparse_softmax_cross_entropy(labels=valid_labels, logits=valid_logits)
+    loss_sum = tf.reduce_sum(loss*(1/16), name='{}_loss'.format(attr_name))
+
+    with tf.name_scope('{}_metrics'.format(attr_name)), tf.device('/cpu:0'):
+        prediction = tf.argmax(valid_logits, axis=-1)
+
+        accuracy = tf.metrics.mean_per_class_accuracy(labels=valid_labels, predictions=prediction, num_classes=2)[1]
+        AP = tf.metrics.average_precision_at_k(labels=valid_labels, predictions=valid_logits, k=1)[1]
+        mean_acc = tf.reduce_mean(accuracy, name='{}_mAcc'.format(attr_name))
+        average_precision = tf.identity(AP, name='{}_AP'.format(attr_name))
+
+    add_moving_summary(loss_sum, mean_acc, average_precision)
 
     return loss_sum
 

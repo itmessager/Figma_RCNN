@@ -56,8 +56,7 @@ def make_dataset(root, subset):
 
 def load_many(basedir, names, is_augment=False):
     attr_names = ['male', 'longhair', 'sunglass', 'hat', 'tshirt', 'longsleeve', 'formal', 'shorts', 'jeans',
-                  'longpants',
-                  'skirt', 'facemask', 'logo', 'stripe']
+                  'longpants','skirt', 'facemask', 'logo', 'stripe']
     train_data_list = make_dataset(basedir, names)
     # a list contain  16 attributes of each roi
     img_attr_dict = {}

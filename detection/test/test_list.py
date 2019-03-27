@@ -19,9 +19,17 @@ import tensorflow as tf
 
 
 males =tf.constant(np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]))
+#males =tf.constant(np.array([-2]))
+
 male_logits = tf.constant(np.array([(0.84, 0), (0.72, 0), (0.86, 0), (0.97, 0), (0.91, 0),
                                     (0.9, 0), (0.72, 0), (0.84, 0), (0.97, 0), (0.99, 0)]
                                   ,dtype='float32'))
+
+# male_logits = tf.constant(np.array([(0.84, 0)],dtype='float32'))
+
+
+
+flag = tf.placeholder(tf.int64, (None,))
 
 
 def convert2D(logits):
@@ -38,14 +46,17 @@ def attr_losses(male_labels, male_logits):
     Returns:
         male_loss
     """
-    valid_inds = tf.where(male_labels >= 0)
+
     specific_labels = tf.where(male_labels >= 0, tf.ones_like(male_labels), tf.zeros_like(male_labels))
     specific_logits = tf.reshape(male_logits[:, 0], [-1])
     attribute_logits = male_logits[:, 1]
+
+
     specific_loss = tf.nn.sigmoid_cross_entropy_with_logits(
         labels=tf.to_float(specific_labels), logits=specific_logits)
     specific_loss_mean = tf.reduce_mean(specific_loss)
 
+    valid_inds = tf.where(male_labels >= 0)
     valid_male_labels = tf.reshape(tf.gather(male_labels,valid_inds), [-1])
     valid_male_logits = tf.reshape(tf.gather(attribute_logits,valid_inds), [-1])
 
@@ -61,6 +72,10 @@ def attr_losses(male_labels, male_logits):
    # male_loss = tf.reduce_mean(male_loss, name='label_loss')
 
     with tf.name_scope('label_metrics'), tf.device('/cpu:0'):
+
+
+
+
         #prediction = tf.argmax(valid_male_logits, axis=1, name='label_prediction')
         prediction = tf.where(attribute_logits > 0.5, tf.ones_like(attribute_logits),tf.zeros_like(attribute_logits))
         prediction = tf.where(specific_logits < 0.5, -tf.ones_like(prediction), prediction)
@@ -75,7 +90,7 @@ def attr_losses(male_labels, male_logits):
 
         accuracy2 = tf.metrics.mean_per_class_accuracy(labels=new_label, predictions=new_prediction, num_classes=3)[1]
         acc = tf.reduce_mean(accuracy2)
-    return valid_male_labels, valid_male_logits, valid_male_logits2D, male_loss,specific_loss_mean,accuracy1, acc,AP
+    return valid_male_labels, valid_male_logits, valid_male_logits2D, valid_inds,male_loss,specific_loss_mean,accuracy1, AP
 
 
 

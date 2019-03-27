@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # File: dataflow.py
+import argparse
 
 import cv2
 import numpy as np
@@ -21,7 +22,7 @@ from detection.tensorpacks.common import (
     box_to_point8, point8_to_box, segmentation_to_mask)
 from detection.config.tensorpack_config import config as cfg
 from detection.tensorpacks.wider_attr import load_many
-
+import random
 try:
     import pycocotools.mask as cocomask
 
@@ -271,6 +272,176 @@ def get_multilevel_rpn_anchor_input(im, boxes, is_crowd):
     return multilevel_inputs
 
 
+def get_coco_wider_dataflow(augment):
+    """
+    Return a training dataflow. Each datapoint consists of the following:
+
+    An image: (h, w, 3),
+
+    1 or more pairs of (anchor_labels, anchor_boxes):
+    anchor_labels: (h', w', NA)
+    anchor_boxes: (h', w', NA, 4)
+
+    gt_boxes: (N, 4)
+    gt_labels: (N,)
+
+    If MODE_MASK, gt_masks: (N, h, w)
+    """
+
+    roidbs_coco = COCODetection.load_many(
+        cfg.DATA.BASEDIR, cfg.DATA.TRAIN, add_gt=True, add_mask=cfg.MODE_MASK)
+    roidbs_wider = load_many('/root/datasets/wider attribute', 'train', augment) + load_many(
+        '/root/datasets/wider attribute', 'val', augment)
+
+    """
+    To train on your own data, change this to your loader.
+    Produce "roidbs" as a list of dict, in the dict the following keys are needed for training:
+    height, width: integer
+    file_name: str, full path to the image
+    boxes: numpy array of kx4 floats
+    class: numpy array of k integers
+    is_crowd: k booleans. Use k False if you don't know what it means.
+    segmentation: k lists of numpy arrays (one for each box).
+        Each list of numpy arrays corresponds to the mask for one instance.
+        Each numpy array in the list is a polygon of shape Nx2,
+        because one mask can be represented by N polygons.
+
+        If your segmentation annotations are originally masks rather than polygons,
+        either convert it, or the augmentation code below will need to be
+        changed or skipped accordingly.
+    """
+
+    # Valid training images should have at least one fg box.
+    # But this filter shall not be applied for testing.
+
+    roidbs_wider = list(filter(lambda img: len(img['bbox']) > 0, roidbs_wider))
+    roidbs_coco = list(filter(lambda img: len(img['boxes'][img['is_crowd'] == 0]) > 0, roidbs_coco))
+    roidbs = roidbs_wider + roidbs_coco
+    random.shuffle(roidbs)
+    num = len(roidbs)
+    logger.info("Filtered {} images which contain no non-crowd groudtruth boxes. Total #images for training: {}".format(
+        num - len(roidbs), len(roidbs)))
+
+    ds = DataFromList(roidbs, shuffle=True)
+
+    aug = imgaug.AugmentorList(
+        [CustomResize(cfg.PREPROC.TRAIN_SHORT_EDGE_SIZE, cfg.PREPROC.MAX_SIZE),
+         imgaug.Flip(horiz=True)])
+
+    def preprocess(roidb):
+        attr_names = ['male', 'longhair', 'sunglass', 'hat', 'tshirt', 'longsleeve', 'formal', 'shorts',
+                      'jeans', 'longpants', 'skirt', 'facemask', 'logo', 'stripe']
+        if 'file_name' in roidb.keys():
+            fname, boxes, klass, is_crowd = roidb['file_name'], roidb['boxes'], roidb['class'], roidb['is_crowd']
+            boxes = np.copy(boxes)
+            im = cv2.imread(fname, cv2.IMREAD_COLOR)
+            assert im is not None, fname
+            im = im.astype('float32')
+            # assume floatbox as input
+            assert boxes.dtype == np.float32, "Loader has to return floating point boxes!"
+
+            # augmentation:
+            im, params = aug.augment_return_params(im)
+            points = box_to_point8(boxes)
+            points = aug.augment_coords(points, params)
+            boxes = point8_to_box(points)
+            assert np.min(np_area(boxes)) > 0, "Some boxes have zero area!"
+
+            ret = {'image': im}
+            # rpn anchor:
+            try:
+                if cfg.MODE_FPN:
+                    multilevel_anchor_inputs = get_multilevel_rpn_anchor_input(im, boxes, is_crowd)
+                    for i, (anchor_labels, anchor_boxes) in enumerate(multilevel_anchor_inputs):
+                        ret['anchor_labels_lvl{}'.format(i + 2)] = anchor_labels
+                        ret['anchor_boxes_lvl{}'.format(i + 2)] = anchor_boxes
+                else:
+                    # anchor_labels, anchor_boxes
+                    ret['anchor_labels'], ret['anchor_boxes'] = get_rpn_anchor_input(im, boxes, is_crowd)
+
+                boxes = boxes[is_crowd == 0]  # skip crowd boxes in training target
+                klass = klass[is_crowd == 0]
+                ret['gt_boxes'] = boxes
+                ret['gt_labels'] = klass
+                for attr_name in attr_names:
+                    ret[attr_name] = np.array([-1])
+
+                if not len(boxes):
+                    raise MalformedData("No valid gt_boxes!")
+            except MalformedData as e:
+                log_once("Input {} is filtered for training: {}".format(fname, str(e)), 'warn')
+                return None
+
+            if cfg.MODE_MASK:
+                # augmentation will modify the polys in-place
+                segmentation = copy.deepcopy(roidb['segmentation'])
+                segmentation = [segmentation[k] for k in range(len(segmentation)) if not is_crowd[k]]
+                assert len(segmentation) == len(boxes)
+
+                # Apply augmentation on polygon coordinates.
+                # And produce one image-sized binary mask per box.
+                masks = []
+                for polys in segmentation:
+                    polys = [aug.augment_coords(p, params) for p in polys]
+                    masks.append(segmentation_to_mask(polys, im.shape[0], im.shape[1]))
+                masks = np.asarray(masks, dtype='uint8')  # values in {0, 1}
+                ret['gt_masks'] = masks
+
+                # from viz import draw_annotation, draw_mask
+                # viz = draw_annotation(im, boxes, klass)
+                # for mask in masks:
+                #     viz = draw_mask(viz, mask)
+                # tpviz.interactive_imshow(viz)
+            return ret
+        else:
+            fname = roidb['img']
+            x1, y1, w, h = np.split(roidb['bbox'], 4, axis=1)
+            boxes = np.concatenate([x1, y1, x1 + w, y1 + h], axis=1)
+            boxes = np.copy(boxes)
+            im = cv2.imread(fname, cv2.IMREAD_COLOR)
+            assert im is not None, fname
+            im = im.astype('float32')
+            # assume floatbox as input
+            assert boxes.dtype == np.float32, "Loader has to return floating point boxes!"
+
+            # augmentation:
+            im, params = aug.augment_return_params(im)
+            points = box_to_point8(boxes)
+            points = aug.augment_coords(points, params)
+            boxes = point8_to_box(points)
+            assert np.min(np_area(boxes)) > 0, "Some boxes have zero area!"
+
+            ret = {'image': im}
+            # rpn anchor:
+            try:
+
+                # anchor_labels, anchor_boxes
+                ret['anchor_labels'], ret['anchor_boxes'] = get_rpn_anchor_input(im, boxes,
+                                                                                 np.zeros(len(boxes), dtype=int))
+                ret['gt_boxes'] = boxes
+                ret['gt_labels'] = np.ones(len(roidb['bbox']), dtype=np.int32)
+
+                for attr_name in attr_names:
+                    ret[attr_name] = roidb[attr_name]
+
+                if not len(boxes):
+                    raise MalformedData("No valid gt_boxes!")
+            except MalformedData as e:
+                log_once("Input {} is filtered for training: {}".format(fname, str(e)), 'warn')
+                return None
+            return ret
+
+
+    if cfg.TRAINER == 'horovod':
+        ds = MultiThreadMapData(ds, 5, preprocess)
+        # MPI does not like fork()
+    else:
+        ds = MultiProcessMapDataZMQ(ds, 10, preprocess)
+    return ds
+
+
+
+
 def get_train_dataflow():
     """
     Return a training dataflow. Each datapoint consists of the following:
@@ -387,7 +558,6 @@ def get_train_dataflow():
         ds = MultiProcessMapDataZMQ(ds, 10, preprocess)
     return ds
 
-
 # read wider attribute dataset
 def get_attributes_dataflow(augment=False):
     """
@@ -404,7 +574,6 @@ def get_attributes_dataflow(augment=False):
 
     If MODE_MASK, gt_masks: (N, h, w)
     """
-    # roidbs = load_many(cfg.DATA.BASEDIR, cfg.DATA.TRAIN)
     logger.info("loading wider attributes dataset...")
     roidbs_train = load_many('/root/datasets/wider attribute', 'train', augment)
     roidbs_val = load_many('/root/datasets/wider attribute', 'val', augment)
@@ -499,6 +668,7 @@ def get_wider_dataflow(augment=False):
     roidbs_train = load_many('/root/datasets/wider attribute', 'train', augment)
     roidbs_test = load_many('/root/datasets/wider attribute', 'test', augment)
     roidbs = roidbs_train + roidbs_test
+
     logger.info("load finished!")
     """
     To train on your own data, change this to your loader.
@@ -526,7 +696,6 @@ def get_wider_dataflow(augment=False):
 
     def preprocess(roidb):
         fname = roidb['img']
-
         x1, y1, w, h = np.split(roidb['bbox'], 4, axis=1)
         boxes = np.concatenate([x1, y1, x1 + w, y1 + h], axis=1)
 
@@ -746,10 +915,15 @@ def get_wider_eval_dataflow(shard=0, num_shards=1, augment=False):
 
 if __name__ == '__main__':
     import os
-    from tensorpack.dataflow import PrintData
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config', help="A list of KEY=VALUE to overwrite those defined in tensorpack_config.py",
+                        nargs='+')
+    args = parser.parse_args()
+    if args.config:
+        cfg.update_args(args.config)
 
     # cfg.DATA.BASEDIR = os.path.expanduser('~/datasets/COCO/DIR')
-    wider_ds = get_wider_dataflow()
+    wider_ds = get_coco_wider_dataflow(False)
     # box_ds = get_train_dataflow()
     # ds = PrintData(ds, 100)
     # TestDataSpeed(ds, 50000).start()

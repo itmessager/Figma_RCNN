@@ -9,11 +9,65 @@ import tqdm
 import argparse
 
 from tensorpack.utils import logger
-from tensorpack.utils.rect import FloatBox
 from tensorpack.utils.timer import timed_operation
 from tensorpack.utils.argtools import log_once
 
 from detection.config.tensorpack_config import config as cfg
+
+class BoxBase(object):
+    __slots__ = ['x1', 'y1', 'x2', 'y2']
+
+    def __init__(self, x1, y1, x2, y2):
+        self.x1 = x1
+        self.y1 = y1
+        self.x2 = x2
+        self.y2 = y2
+    def copy(self):
+        new = type(self)()
+        for i in self.__slots__:
+            setattr(new, i, getattr(self, i))
+        return new
+
+    def __str__(self):
+        return '{}(x1={}, y1={}, x2={}, y2={})'.format(
+            type(self).__name__, self.x1, self.y1, self.x2, self.y2)
+
+    __repr__ = __str__
+
+    def area(self):
+        return self.w * self.h
+
+    def is_box(self):
+        return self.w > 0 and self.h > 0
+
+    def to_list(self):
+        return [self.x1, self.y1, self.x2, self.y2]
+
+class MyFloatBox(BoxBase):
+    def __init__(self, x1, y1, x2, y2):
+        for k in [x1, y1, x2, y2]:
+            assert isinstance(k, float), "type={},value={}".format(type(k), k)
+        super(MyFloatBox, self).__init__(x1, y1, x2, y2)
+
+    @property
+    def w(self):
+        return self.x2 - self.x1
+
+    @property
+    def h(self):
+        return self.y2 - self.y1
+
+    @staticmethod
+    def from_intbox(intbox):
+        return MyFloatBox(intbox.x1, intbox.y1,
+                        intbox.x2 + 1, intbox.y2 + 1)
+
+    def clip_by_shape(self, shape):
+        self.x1 = np.clip(self.x1, 0, shape[1])
+        self.x2 = np.clip(self.x2, 0, shape[1])
+        self.y1 = np.clip(self.y1, 0, shape[0])
+        self.y2 = np.clip(self.y2, 0, shape[0])
+
 
 
 __all__ = ['COCODetection', 'COCOMeta']
@@ -133,7 +187,7 @@ class COCODetection(object):
             # bbox is originally in float
             # x1/y1 means upper-left corner and w/h means true w/h. This can be verified by segmentation pixels.
             # But we do assume that (0.0, 0.0) is upper-left corner of the first pixel
-            box = FloatBox(float(x1), float(y1),
+            box = MyFloatBox(float(x1), float(y1),
                            float(x1 + w), float(y1 + h))
             box.clip_by_shape([height, width])
             # Require non-zero seg area and more than 1x1 box size
