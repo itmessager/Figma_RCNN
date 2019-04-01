@@ -290,6 +290,10 @@ def get_coco_wider_dataflow(augment):
 
     roidbs_coco = COCODetection.load_many(
         cfg.DATA.BASEDIR, cfg.DATA.TRAIN, add_gt=True, add_mask=cfg.MODE_MASK)
+
+    #Just keep images that contain persons.
+    roidbs_coco = [roidb for roidb in roidbs_coco if np.sum(roidb['class'] == 1) / len(roidb['class']) >= 2 / 3]
+
     roidbs_wider = load_many('/root/datasets/wider attribute', 'train', augment) + load_many(
         '/root/datasets/wider attribute', 'val', augment)
 
