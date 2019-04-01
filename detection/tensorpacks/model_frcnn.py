@@ -137,7 +137,7 @@ def attr_output(name, feature):
     return attr
 
 
-def attrs_predict(feature):
+def attrs_predict(feature, predict):
     """
     Attribute network branchs
     Args:
@@ -147,20 +147,20 @@ def attrs_predict(feature):
         A Dict
         attribute name: attribute logits
     """
-    attrs_logits = [logits_to_predict(attr_output('male', feature), 'male'),
-                    logits_to_predict(attr_output('longhair', feature), 'longhair'),
-                    logits_to_predict(attr_output('sunglass', feature), 'sunglass'),
-                    logits_to_predict(attr_output('hat', feature), 'hat'),
-                    logits_to_predict(attr_output('tshirt', feature), 'tshirt'),
-                    logits_to_predict(attr_output('longsleeve', feature), 'longsleeve'),
-                    logits_to_predict(attr_output('formal', feature), 'formal'),
-                    logits_to_predict(attr_output('shorts', feature), 'shorts'),
-                    logits_to_predict(attr_output('jeans', feature), 'jeans'),
-                    logits_to_predict(attr_output('skirt', feature), 'skirt'),
-                    logits_to_predict(attr_output('facemask', feature), 'facemask'),
-                    logits_to_predict(attr_output('logo', feature), 'logo'),
-                    logits_to_predict(attr_output('stripe', feature), 'stripe'),
-                    logits_to_predict(attr_output('longpants', feature), 'longpants')]
+    attrs_logits = [predict(attr_output('male', feature), 'male'),
+                    predict(attr_output('longhair', feature), 'longhair'),
+                    predict(attr_output('sunglass', feature), 'sunglass'),
+                    predict(attr_output('hat', feature), 'hat'),
+                    predict(attr_output('tshirt', feature), 'tshirt'),
+                    predict(attr_output('longsleeve', feature), 'longsleeve'),
+                    predict(attr_output('formal', feature), 'formal'),
+                    predict(attr_output('shorts', feature), 'shorts'),
+                    predict(attr_output('jeans', feature), 'jeans'),
+                    predict(attr_output('skirt', feature), 'skirt'),
+                    predict(attr_output('facemask', feature), 'facemask'),
+                    predict(attr_output('logo', feature), 'logo'),
+                    predict(attr_output('stripe', feature), 'stripe'),
+                    predict(attr_output('longpants', feature), 'longpants')]
 
     return attrs_logits
 
@@ -179,11 +179,31 @@ def logits_to_predict(attr_logits, name=None):
 
     prediction = tf.where(attribute_logits > 0.5, tf.ones_like(attribute_logits), tf.zeros_like(attribute_logits))
     prediction = tf.where(specific_logits < 0.5, -tf.ones_like(prediction), prediction)
+
     predict_label = tf.to_int32(prediction)
     if name:
         return tf.identity(predict_label, name='{}_predict'.format(name))
     else:
         return predict_label
+
+
+def logits_to_predict_v2(attr_logits, name=None):
+    """
+    this function is only contains two type
+    Args:
+        :param name: add name for tensor if name is not None
+        :param attr_logits:
+    Returns:
+        predict_label nx1 [-1,1,0,-1,-1] int64
+
+    """
+    prediction = tf.argmax(attr_logits, axis=-1)
+    predict_label = tf.to_int32(prediction)
+    if name:
+        return tf.identity(predict_label, name='{}_predict'.format(name))
+    else:
+        return predict_label
+
 
 
 def all_attrs_losses(attr_labels, attr_logits,loss_function):
@@ -277,7 +297,7 @@ def attr_losses_v2(attr_name, labels, logits):
     valid_logits = tf.reshape(tf.gather(logits, valid_inds), (-1, 2))
 
     loss = tf.losses.sparse_softmax_cross_entropy(labels=valid_labels, logits=valid_logits)
-    loss_sum = tf.reduce_sum(loss*(1/16), name='{}_loss'.format(attr_name))
+    loss_sum = tf.reduce_sum(loss, name='{}_loss'.format(attr_name))
 
     with tf.name_scope('{}_metrics'.format(attr_name)), tf.device('/cpu:0'):
         prediction = tf.argmax(valid_logits, axis=-1)
