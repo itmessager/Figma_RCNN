@@ -10,7 +10,7 @@ import tqdm
 import numpy as np
 import json
 import six
-import os
+
 
 from concurrent.futures import ThreadPoolExecutor
 
@@ -607,7 +607,7 @@ if __name__ == '__main__':
                 (steps * factor // stepnum, cfg.TRAIN.BASE_LR * mult))
         logger.info("Warm Up Schedule (steps, value): " + str(warmup_schedule))
         logger.info("LR Schedule (epochs, value): " + str(lr_schedule))
-        train_dataflow = get_coco_wider_dataflow(True)   # get the wider datasets
+        train_dataflow = get_coco_wider_dataflow(False)   # get the wider datasets
         # This is what's commonly referred to as "epochs"
         total_passes = cfg.TRAIN.LR_SCHEDULE[-1] * 8 / train_dataflow.size()
         logger.info("Total passes of the training set is: {}".format(total_passes))
@@ -663,12 +663,16 @@ FRCNN.BATCH_PER_IM=64
 PREPROC.SHORT_EDGE_SIZE=600
 PREPROC.MAX_SIZE=1024
 TRAIN.LR_SCHEDULE=[150000,230000,280000]
+BACKBONE.WEIGHTS=/home/ds/dev/datasets/COCO-R50C4-MaskRCNN-Standard.npz
+DATA.BASEDIR=/home/ds/dev/datasets/COCO/DIR/
+WIDER.BASEDIR=/home/ds/dev/datasets/WiderAttribute/
+
+
+--config
 BACKBONE.WEIGHTS=/root/datasets/COCO-R50C4-MaskRCNN-Standard.npz
 DATA.BASEDIR=/root/datasets/COCO/DIR/
 
-
 '''
-
 
 '''
 
@@ -678,6 +682,5 @@ DATA.BASEDIR=/root/datasets/COCO/DIR/
 /home/Figma_RCNN/detection/tensorpacks/train_log/maskrcnn/checkpoint
 --config 
 MODE_MASK=False
-
 
 '''

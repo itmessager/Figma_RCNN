@@ -292,10 +292,10 @@ def get_coco_wider_dataflow(augment):
         cfg.DATA.BASEDIR, cfg.DATA.TRAIN, add_gt=True, add_mask=cfg.MODE_MASK)
 
     #Just keep images that contain persons.
-    roidbs_coco = [roidb for roidb in roidbs_coco if np.sum(roidb['class'] == 1) / len(roidb['class']) >= 2 / 3]
+    roidbs_coco = [roidb for roidb in roidbs_coco if np.sum(roidb['class'] == 1) / len(roidb['class']) >= 1 / 5]
 
-    roidbs_wider = load_many('/root/datasets/wider attribute', 'train', augment) + load_many(
-        '/root/datasets/wider attribute', 'val', augment)
+    roidbs_wider = load_many(cfg.WIDER.BASEDIR, 'train', augment) + load_many(
+        cfg.WIDER.BASEDIR, 'val', augment)
 
     """
     To train on your own data, change this to your loader.
@@ -318,7 +318,7 @@ def get_coco_wider_dataflow(augment):
     # Valid training images should have at least one fg box.
     # But this filter shall not be applied for testing.
 
-    roidbs_wider = list(filter(lambda img: len(img['bbox']) > 0, roidbs_wider))
+    roidbs_wider = list(filter(lambda img: len(img['bbox']) > 0, roidbs_wider * 5))
     roidbs_coco = list(filter(lambda img: len(img['boxes'][img['is_crowd'] == 0]) > 0, roidbs_coco))
     roidbs = roidbs_wider + roidbs_coco
     random.shuffle(roidbs)
