@@ -335,7 +335,7 @@ def get_coco_wider_dataflow(augment):
     def preprocess(roidb):
         attr_names = ['male', 'longhair', 'sunglass', 'hat', 'tshirt', 'longsleeve', 'formal', 'shorts',
                       'jeans', 'longpants', 'skirt', 'facemask', 'logo', 'stripe']
-        if 'file_name' in roidb.keys():
+        if 'file_name' in roidb.keys():    # COCO datasets
             fname, boxes, klass, is_crowd = roidb['file_name'], roidb['boxes'], roidb['class'], roidb['is_crowd']
             boxes = np.copy(boxes)
             im = cv2.imread(fname, cv2.IMREAD_COLOR)
@@ -368,7 +368,7 @@ def get_coco_wider_dataflow(augment):
                 ret['gt_boxes'] = boxes
                 ret['gt_labels'] = klass
                 for attr_name in attr_names:
-                    ret[attr_name] = np.array([-1])
+                    ret[attr_name] = np.array([-3])
 
                 if not len(boxes):
                     raise MalformedData("No valid gt_boxes!")
@@ -397,7 +397,7 @@ def get_coco_wider_dataflow(augment):
                 #     viz = draw_mask(viz, mask)
                 # tpviz.interactive_imshow(viz)
             return ret
-        else:
+        else:  # Wider datasets
             fname = roidb['img']
             x1, y1, w, h = np.split(roidb['bbox'], 4, axis=1)
             boxes = np.concatenate([x1, y1, x1 + w, y1 + h], axis=1)

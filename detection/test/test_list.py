@@ -1,29 +1,21 @@
-# a = [0,2].append([1])
-# print(a)
-# list = [1,2,3]
-# list.append(4)
-# print(list)
-# list2 = [5,6]
-#
-# print(type(list)==type([]))
-# print(type(list))
-
 import numpy as np
 import tensorflow as tf
 
 #males =tf.constant(np.array([-1, 1, 1, 1, -1, 1, -1, -1, 1, 1]))
-# males =tf.constant(np.array([-1, 1, -1, 1, 0, -1, 1, 0, 1, -1]))
-# male_logits = tf.constant(np.array([(0.44, 0.51), (0.72, 0.58), (0.16, 0.84), (0.77, 0.83), (0.51, 0.49),
-#                                     (0.4, 0.4), (0.72, 0.58), (0.84, 0.16), (0.77, 0.83), (0.49, 0.51)]
+
+
+males = tf.constant(np.array([-1, 1, -1, -2, 0, -1, 1, 0, 1, -1]))
+male_logits = tf.constant(np.array([(0.44, 0.51), (0.72, 0.58), (0.16, 0.84), (0.77, 0.83), (0.51, 0.49),
+                                    (0.4, 0.4), (0.72, 0.58), (0.84, 0.16), (0.77, 0.83), (0.49, 0.51)]
+                                   , dtype='float32'))
+
+
+# males =tf.constant(np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]))
+# #males =tf.constant(np.array([-2]))
+#
+# male_logits = tf.constant(np.array([(0.84, 0), (0.72, 0), (0.86, 0), (0.97, 0), (0.91, 0),
+#                                     (0.9, 0), (0.72, 0), (0.84, 0), (0.97, 0), (0.99, 0)]
 #                                   ,dtype='float32'))
-
-
-males =tf.constant(np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]))
-#males =tf.constant(np.array([-2]))
-
-male_logits = tf.constant(np.array([(0.84, 0), (0.72, 0), (0.86, 0), (0.97, 0), (0.91, 0),
-                                    (0.9, 0), (0.72, 0), (0.84, 0), (0.97, 0), (0.99, 0)]
-                                  ,dtype='float32'))
 
 # male_logits = tf.constant(np.array([(0.84, 0)],dtype='float32'))
 
@@ -46,6 +38,12 @@ def attr_losses(male_labels, male_logits):
     Returns:
         male_loss
     """
+
+    valid_inds = tf.where(male_labels >= -1)
+    male_labels = tf.reshape(tf.gather(male_labels,valid_inds), [-1])
+    male_logits = tf.reshape(tf.gather(male_logits,valid_inds), (-1, 2))
+
+
 
     specific_labels = tf.where(male_labels >= 0, tf.ones_like(male_labels), tf.zeros_like(male_labels))
     specific_logits = tf.reshape(male_logits[:, 0], [-1])
@@ -72,9 +70,6 @@ def attr_losses(male_labels, male_logits):
    # male_loss = tf.reduce_mean(male_loss, name='label_loss')
 
     with tf.name_scope('label_metrics'), tf.device('/cpu:0'):
-
-
-
 
         #prediction = tf.argmax(valid_male_logits, axis=1, name='label_prediction')
         prediction = tf.where(attribute_logits > 0.5, tf.ones_like(attribute_logits),tf.zeros_like(attribute_logits))

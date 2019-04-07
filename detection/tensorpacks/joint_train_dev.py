@@ -38,7 +38,8 @@ from detection.tensorpacks import model_frcnn
 from detection.tensorpacks import model_mrcnn
 from detection.tensorpacks.model_frcnn import (
     sample_fast_rcnn_targets, fastrcnn_outputs,
-    fastrcnn_predictions, BoxProposals, FastRCNNHead, attrs_head, attrs_predict, all_attrs_losses, attr_losses_v2)
+    fastrcnn_predictions, BoxProposals, FastRCNNHead, attrs_head, attrs_predict, all_attrs_losses, attr_losses,
+    attr_losses_v2, logits_to_predict)
 from detection.tensorpacks.model_mrcnn import maskrcnn_upXconv_head, maskrcnn_loss
 from detection.tensorpacks.model_rpn import rpn_head, rpn_losses, generate_rpn_proposals
 from detection.tensorpacks.model_fpn import (
@@ -196,7 +197,7 @@ class ResNetC4Model(DetectionModel):
 
         if is_training:
             # attributes loss
-            attrs_losses = all_attrs_losses(inputs, attrs_logits, attr_losses_v2)
+            attrs_losses = all_attrs_losses(inputs, attrs_logits, attr_losses)
             all_losses = [attrs_losses]
             # rpn loss  = label_loss, box_loss
             all_losses.extend(rpn_losses(
@@ -232,7 +233,7 @@ class ResNetC4Model(DetectionModel):
             person_roi_resized = roi_align(featuremap, final_person_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE), 14)
             feature_attrs = resnet_conv5(person_roi_resized, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
             feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  #
-            attrs_labels = attrs_predict(feature_attrs_gap)
+            attrs_labels = attrs_predict(feature_attrs_gap, logits_to_predict)
 
 class ResNetFPNModel(DetectionModel):
 
@@ -671,7 +672,7 @@ WIDER.BASEDIR=/home/ds/dev/datasets/WiderAttribute/
 --config
 BACKBONE.WEIGHTS=/root/datasets/COCO-R50C4-MaskRCNN-Standard.npz
 DATA.BASEDIR=/root/datasets/COCO/DIR/
-
+WIDER.BASEDIR=/root/datasets/WiderAttribute/
 '''
 
 '''
