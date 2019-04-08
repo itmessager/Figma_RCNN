@@ -38,7 +38,7 @@ from detection.tensorpacks import model_frcnn
 from detection.tensorpacks import model_mrcnn
 from detection.tensorpacks.model_frcnn import (
     sample_fast_rcnn_targets, fastrcnn_outputs,
-    fastrcnn_predictions, BoxProposals, FastRCNNHead, attrs_head, attrs_predict, all_attrs_losses, attr_losses_v2)
+    fastrcnn_predictions, BoxProposals, FastRCNNHead, attrs_head, attrs_predict, all_attrs_losses,attr_losses, attr_losses_v2)
 from detection.tensorpacks.model_mrcnn import maskrcnn_upXconv_head, maskrcnn_loss
 from detection.tensorpacks.model_rpn import rpn_head, rpn_losses, generate_rpn_proposals
 from detection.tensorpacks.model_fpn import (
@@ -196,7 +196,7 @@ class ResNetC4Model(DetectionModel):
 
         if is_training:
             # attributes loss
-            attrs_losses = all_attrs_losses(inputs, attrs_logits, attr_losses_v2)
+            attrs_losses = all_attrs_losses(inputs, attrs_logits, attr_losses)
             all_losses = [attrs_losses]
             # rpn loss  = label_loss, box_loss
             all_losses.extend(rpn_losses(

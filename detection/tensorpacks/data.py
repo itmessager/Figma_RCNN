@@ -322,6 +322,7 @@ def get_coco_wider_dataflow(augment):
     roidbs_coco = list(filter(lambda img: len(img['boxes'][img['is_crowd'] == 0]) > 0, roidbs_coco))
     roidbs = roidbs_wider + roidbs_coco
     random.shuffle(roidbs)
+    random.shuffle(roidbs)
     num = len(roidbs)
     logger.info("Filtered {} images which contain no non-crowd groudtruth boxes. Total #images for training: {}".format(
         num - len(roidbs), len(roidbs)))
@@ -368,7 +369,7 @@ def get_coco_wider_dataflow(augment):
                 ret['gt_boxes'] = boxes
                 ret['gt_labels'] = klass
                 for attr_name in attr_names:
-                    ret[attr_name] = np.array([-1])
+                    ret[attr_name] = np.array([-3])
 
                 if not len(boxes):
                     raise MalformedData("No valid gt_boxes!")
@@ -669,8 +670,8 @@ def get_wider_dataflow(augment=False):
     """
 
     logger.info("loading wider attributes dataset...")
-    roidbs_train = load_many('/root/datasets/wider attribute', 'train', augment)
-    roidbs_test = load_many('/root/datasets/wider attribute', 'test', augment)
+    roidbs_train = load_many(cfg.WIDER.BASEDIR, 'train', augment)
+    roidbs_test = load_many(cfg.WIDER.BASEDIR, 'test', augment)
     roidbs = roidbs_train + roidbs_test
 
     logger.info("load finished!")
