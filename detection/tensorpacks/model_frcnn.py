@@ -242,16 +242,19 @@ def attr_losses(attr_name, labels, logits):
     """
     # the first num of logits is to determine whether the attribute is identifiable
 
-    valid_inds = tf.where(labels >= -1)
-    labels = tf.reshape(tf.gather(labels,valid_inds), [-1])
-    logits = tf.reshape(tf.gather(logits,valid_inds), (-1, 2))
+
+    valid_inds_ = tf.where(labels >= -1)
+    labels = tf.reshape(tf.gather(labels, valid_inds_), [-1])
+    logits = tf.reshape(tf.gather(logits, valid_inds_), (-1, 2))
 
     specific_labels = tf.where(labels >= 0, tf.ones_like(labels), tf.zeros_like(labels))
     specific_logits = tf.reshape(logits[:, 0], [-1])
 
     specific_loss = tf.nn.sigmoid_cross_entropy_with_logits(
         labels=tf.to_float(specific_labels), logits=specific_logits)
-    specific_loss_mean = tf.reduce_mean(specific_loss)
+
+    specific_loss_sum = tf.reduce_sum(specific_loss) * 0.05
+
 
     # the second num of logits is to determine whether the attribute is positive or negative
     # only use the recognizable attribute to train the second num of logits
@@ -266,8 +269,10 @@ def attr_losses(attr_name, labels, logits):
         labels=tf.to_float(attr_labels), logits=attr_logits)
     attr_loss_sum = tf.reduce_sum(attr_loss)
     # attr_loss_sum = tf.reduce_mean(attr_loss, name='attr_loss')
-    loss_sum = tf.add_n([attr_loss_sum, specific_loss_mean], name='{}_loss'.format(attr_name))
+
+    loss_sum = tf.add_n([attr_loss_sum, specific_loss_sum], name='{}_loss'.format(attr_name))
     prediction = convert2D(tf.gather(attribute_logits, attr_inds))
+
 
     with tf.name_scope('{}_metrics'.format(attr_name)), tf.device('/cpu:0'):
         predict_label = logits_to_predict(logits)

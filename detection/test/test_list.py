@@ -3,8 +3,7 @@ import tensorflow as tf
 
 #males =tf.constant(np.array([-1, 1, 1, 1, -1, 1, -1, -1, 1, 1]))
 
-
-males = tf.constant(np.array([-1, 1, -1, -2, 0, -1, 1, 0, 1, -1]))
+males =tf.constant(np.array([-2, -2, -2, -2, -2, -2, -2, -2, -2, -2]))
 male_logits = tf.constant(np.array([(0.44, 0.51), (0.72, 0.58), (0.16, 0.84), (0.77, 0.83), (0.51, 0.49),
                                     (0.4, 0.4), (0.72, 0.58), (0.84, 0.16), (0.77, 0.83), (0.49, 0.51)]
                                    , dtype='float32'))
@@ -39,11 +38,10 @@ def attr_losses(male_labels, male_logits):
         male_loss
     """
 
-    valid_inds = tf.where(male_labels >= -1)
-    male_labels = tf.reshape(tf.gather(male_labels,valid_inds), [-1])
-    male_logits = tf.reshape(tf.gather(male_logits,valid_inds), (-1, 2))
 
-
+    valid_inds_ = tf.where(male_labels >= -1)
+    male_labels = tf.reshape(tf.gather(male_labels, valid_inds_), [-1])
+    male_logits = tf.reshape(tf.gather(male_logits, valid_inds_), (-1, 2))
 
     specific_labels = tf.where(male_labels >= 0, tf.ones_like(male_labels), tf.zeros_like(male_labels))
     specific_logits = tf.reshape(male_logits[:, 0], [-1])
