@@ -25,7 +25,7 @@ _C.DATA.TRAIN = ['train2014', 'valminusminival2014']   # i.e., trainval35k
 _C.DATA.VAL = 'minival2014'   # For now, only support evaluation on single dataset
 _C.DATA.NUM_CATEGORY = 80    # 80 categories.
 _C.DATA.CLASS_NAMES = []  # NUM_CLASS (NUM_CATEGORY+1) strings, to be populated later by data loader. The first is BG.
-_C.WIDER.BASEDIR = '/home/ds/dev/datasets/WiderAttribute/'
+_C.WIDER.BASEDIR = '/root/datasets/WiderAttribute/'
 # basemodel ----------------------
 _C.BACKBONE.WEIGHTS = ''   # /path/to/weights.npz
 _C.BACKBONE.RESNET_NUM_BLOCK = [3, 4, 6, 3]     # for resnet50
@@ -60,7 +60,7 @@ _C.TRAIN.LR_SCHEDULE = [120000, 160000, 180000]  # "1x" schedule in detectron
 _C.TRAIN.NUM_EVALS = 20  # number of evaluations to run during training
 
 # preprocessing --------------------
-# Alternative old (worse & faster) setting: 600, 1024
+# Alternatir) setting: 600, 1024
 _C.PREPROC.TRAIN_SHORT_EDGE_SIZE = [800, 800]  # [min, max] to sample from
 _C.PREPROC.TEST_SHORT_EDGE_SIZE = 800
 _C.PREPROC.MAX_SIZE = 1333

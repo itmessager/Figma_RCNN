@@ -11,7 +11,7 @@ from tensorpack.tfutils.varreplace import custom_getter_scope, freeze_variables
 from tensorpack.models import (
     Conv2D, MaxPooling, BatchNorm, layer_register)
 
-from detection.config.tensorpack_config import config as cfg
+from detection.config.config import config as cfg
 
 
 @layer_register(log_shape=True)

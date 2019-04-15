@@ -6,7 +6,7 @@ from tensorpack.tfutils.common import get_tf_version_tuple
 from tensorpack.tfutils.export import ModelExport
 
 from deploy.tf_models_utils import convert_pb_to_pbtxt
-from detection.config.tensorpack_config import finalize_configs, config as cfg
+from detection.config.config import finalize_configs, config as cfg
 from detection.tensorpacks.train import ResNetFPNModel, ResNetC4Model
 
 if __name__ == '__main__':

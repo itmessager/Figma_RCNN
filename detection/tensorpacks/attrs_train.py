@@ -46,7 +46,7 @@ from detection.tensorpacks.data import (
 
 from detection.tensorpacks.eval import (
     eval_coco, detect_one_image, print_evaluation_scores, DetectionResult)
-from detection.config.tensorpack_config import finalize_configs, config as cfg
+from detection.config.config import finalize_configs, config as cfg
 
 
 class DetectionModel(ModelDesc):
@@ -190,7 +190,6 @@ class ResNetC4Model(DetectionModel):
         attrs_loss = all_attrs_losses(inputs, attrs_logits)
 
         all_losses = [attrs_loss]
-        # male loss
         wd_cost = regularize_cost(
             '.*/W', l2_regularizer(cfg.TRAIN.WEIGHT_DECAY), name='wd_cost')
         all_losses.append(wd_cost)

@@ -1,9 +1,7 @@
 import numpy as np
 import time
-
 import cv2
 import argparse
-
 from PIL import ImageDraw, Image
 from attributer.attributer import PersonAttrs, PersonBoxes
 from utils.viz_utils import draw_tracked_people, draw_person_attributes
@@ -24,7 +22,7 @@ def run(process_func, args, cam=None, video=None, image=None):
     # Initialize model
     width, height = cap.get(3), cap.get(4)
     print((width, height))
-    models = get_detector(args.obj_model, args.obj_ckpt, args.obj_config)
+    models = get_detector(args.load_ckpt, args.config)
 
     frame_count = 0
     while True:
@@ -49,16 +47,13 @@ def run(process_func, args, cam=None, video=None, image=None):
                     break
 
 
-def get_detector(model, weight_file, config):
-    assert model in ['all-in-one', 'two-stage']
-    if model == 'all-in-one':
-        from detection.core.tensorpack_detector import TensorPackDetector
-    else:
-        from detection.tensorpacks.tensorpack_detector_dev import TensorPackDetector
-    from detection.config.tensorpack_config import config as cfg
+def get_detector(weight_file, config):
+
+    from detection.tensorpacks.inference import AttributeDetector
+    from detection.config.config import config as cfg
     if config:
         cfg.update_args(config)
-    return TensorPackDetector(weight_file)
+    return AttributeDetector(weight_file)
 
 
 # use models to detect
@@ -66,7 +61,7 @@ def process_detector_func(models, image_bgr):
     # Perform detection
     person_results = models.detect(image_bgr, rgb=False)
 
-    # get the people's boxes,masks,scores,id
+    # get the people's boxes,scores,id
     people_boxes = [PersonBoxes(r) for r in person_results]
     # Calculate people's attributes
     people_attrs = [PersonAttrs(r) for r in person_results]
@@ -86,53 +81,21 @@ def process_detector_func(models, image_bgr):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--video',
-        type=str,
-        help="Run prediction on a given video. "
-             "This argument is the path to the input video file")
-    parser.add_argument(
-        '--image',
-        type=str,
-        help="Run prediction on a given image. "
-             "This argument is the path to the input image file")
-    parser.add_argument(
-        '--cam',
-        type=int,
-        help='Specify which camera to detect.')
-    parser.add_argument(
-        '--obj_model',
-        default='all-in-one',
-        type=str,
-        help='all-in-one | two-stage')
-    parser.add_argument(
-        '--obj_ckpt',
-        default='',
-        type=str,
-        help='Checkpoint of object detection model')
-    parser.add_argument(
-        '--obj_config',
-        default='',
-        type=str,
-        help='Configurations of object detection model',
-        nargs='+'
-    )
-    parser.add_argument(
-        '--pretrain', action='store_true', help='Whether to use pretrained weights in conv models')
+    parser.add_argument('--video', type=str, help="This argument is the path to the input video file")
+    parser.add_argument('--image', type=str, help="This argument is the path to the input image file")
+    parser.add_argument('--cam', type=int, default=0, help='Specify which camera to detect.')
+    parser.add_argument('--load_ckpt', default='', type=str, help='Checkpoint of attribute-rcnn model')
+    parser.add_argument('--config', default='', type=str, help='Configurations of object detection model',
+                        nargs='+')
     args = parser.parse_args()
 
     run(process_detector_func, args, args.cam, args.video, args.image)
 
 '''
-
 --image
 /root/datasets/img-folder/1.jpg
---cam
-0
---obj_model
-tensorpack
 --obj_ckpt
-/home/Figma_RCNN/detection/tensorpacks/train_log/figmarcnn/checkpoint
+/root/datasets/0317/checkpoint
 --obj_config
 DATA.BASEDIR=/root/datasets/COCO/DIR
 

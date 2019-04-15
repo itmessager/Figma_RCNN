@@ -14,7 +14,7 @@ from tensorpack.models import (
 from detection.tensorpacks.model_rpn import rpn_losses, generate_rpn_proposals
 from detection.tensorpacks.model_box import roi_align
 from detection.tensorpacks.utils.box_ops import area as tf_area
-from detection.config.tensorpack_config import config as cfg
+from detection.config.config import config as cfg
 from detection.tensorpacks.basemodel import GroupNorm
 
 

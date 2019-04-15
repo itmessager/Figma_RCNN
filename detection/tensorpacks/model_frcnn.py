@@ -14,7 +14,7 @@ from tensorpack.utils.argtools import memoized
 from detection.tensorpacks.basemodel import GroupNorm
 from detection.tensorpacks.utils.box_ops import pairwise_iou
 from detection.tensorpacks.model_box import encode_bbox_target, decode_bbox_target
-from detection.config.tensorpack_config import config as cfg
+from detection.config.config import config as cfg
 
 
 @under_name_scope()

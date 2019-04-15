@@ -12,8 +12,6 @@ import json
 import six
 import os
 
-from concurrent.futures import ThreadPoolExecutor
-
 try:
     import horovod.tensorflow as hvd
 except ImportError:
@@ -22,42 +20,28 @@ except ImportError:
 import tensorflow as tf
 
 assert six.PY3, "FasterRCNN requires Python 3!"
-
 from tensorpack import *
-from tensorpack.tfutils.summary import add_moving_summary
 from tensorpack.tfutils import optimizer
-from tensorpack.tfutils.common import get_tf_version_tuple
 import tensorpack.utils.viz as tpviz
 
 from detection.tensorpacks.coco import COCODetection
 from detection.tensorpacks.basemodel import (
-    image_preprocess, resnet_c4_backbone, resnet_conv5,
-    resnet_fpn_backbone, resnet_conv5_attr)
+    image_preprocess, resnet_c4_backbone, resnet_conv5)
 
-from detection.tensorpacks import model_frcnn
-from detection.tensorpacks import model_mrcnn
-from detection.tensorpacks.model_frcnn import (
-    sample_fast_rcnn_targets, fastrcnn_outputs,
-    fastrcnn_predictions, BoxProposals, FastRCNNHead, attrs_head, attrs_predict, logits_to_predict_v2,
-    logits_to_predict)
-from detection.tensorpacks.model_mrcnn import maskrcnn_upXconv_head, maskrcnn_loss
-from detection.tensorpacks.model_rpn import rpn_head, rpn_losses, generate_rpn_proposals
-from detection.tensorpacks.model_fpn import (
-    fpn_model, multilevel_roi_align,
-    generate_fpn_proposals)
-from detection.tensorpacks.model_cascade import CascadeRCNNHead
+from detection.tensorpacks.model_frcnn import (fastrcnn_outputs,
+                                               fastrcnn_predictions, BoxProposals, FastRCNNHead, attrs_predict,
+                                               logits_to_predict_v2,
+                                               logits_to_predict)
+
+from detection.tensorpacks.model_rpn import rpn_head, generate_rpn_proposals
 from detection.tensorpacks.model_box import (
-    clip_boxes, crop_and_resize, roi_align, RPNAnchors)
+    clip_boxes, roi_align, RPNAnchors)
 
-from detection.tensorpacks.data import (
-    get_train_dataflow, get_eval_dataflow, get_attributes_dataflow,
-    get_all_anchors, get_all_anchors_fpn)
-from detection.tensorpacks.viz import (
-    draw_annotation, draw_proposal_recall,
-    draw_predictions, draw_final_outputs)
+from detection.tensorpacks.data import get_all_anchors
+from detection.tensorpacks.viz import draw_final_outputs
 from detection.tensorpacks.eval import (
     eval_coco, detect_one_image, print_evaluation_scores, DetectionResult)
-from detection.config.tensorpack_config import finalize_configs, config as cfg
+from detection.config.config import finalize_configs, config as cfg
 
 
 class DetectionModel(ModelDesc):
@@ -88,8 +72,6 @@ class ResNetC4Model(DetectionModel):
             tf.placeholder(tf.float32, (None, None, cfg.RPN.NUM_ANCHOR, 4), 'anchor_boxes'),
             # box of each ground truth
             tf.placeholder(tf.float32, (None, 4), 'gt_boxes')]
-        # label of each ground truth
-        # tf.placeholder(tf.int64, (None,), 'gt_labels'), # all > 0
         return ret
 
     def build_graph(self, *inputs):
@@ -160,7 +142,7 @@ class ResNetC4Model(DetectionModel):
         person_roi_resized = roi_align(featuremap, final_person_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE), 14)
         feature_attrs = resnet_conv5(person_roi_resized, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
         feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  #
-        attrs_labels = attrs_predict(feature_attrs_gap,logits_to_predict)
+        attrs_labels = attrs_predict(feature_attrs_gap, logits_to_predict)
 
 
 def predict(pred_func, input_file):
@@ -169,6 +151,42 @@ def predict(pred_func, input_file):
     final = draw_final_outputs(img, results)  # image contain boxes,labels and scores
     viz = np.concatenate((img, final), axis=1)
     tpviz.interactive_imshow(viz)
+
+from collections import namedtuple
+
+class AttributeDetector():
+    def __init__(self, weight_file):
+        MODEL = ResNetC4Model()
+
+        finalize_configs(is_training=False)
+
+        cfg.TEST.RESULT_SCORE_THRESH = cfg.TEST.RESULT_SCORE_THRESH_VIS
+
+        # predict model
+        self.pred = OfflinePredictor(PredictConfig(
+            model=MODEL,
+            session_init=get_model_loader(weight_file),
+            input_names=['image'],
+            output_names=['person_boxes', 'person_scores', 'person_labels',
+                          'male_predict', 'longhair_predict', 'sunglass_predict',
+                          'hat_predict', 'tshirt_predict', 'longsleeve_predict',
+                          'formal_predict', 'shorts_predict', 'jeans_predict',
+                          'skirt_predict', 'facemask_predict', 'logo_predict',
+                          'stripe_predict', 'longpants_predict'
+                          ]))
+        # Only to load the class names into caches
+        COCODetection(cfg.DATA.BASEDIR, cfg.DATA.VAL)
+
+    @staticmethod
+    def rgb_to_bgr(img):
+        return img[..., ::-1]
+    def detect(self, img, rgb=True):
+        if rgb:
+            img = self.rgb_to_bgr(img)
+        return detect_one_image(img, self.pred)
+
+    def get_class_ids(self):
+        return set(range(1, cfg.DATA.NUM_CATEGORY + 1))
 
 
 if __name__ == '__main__':

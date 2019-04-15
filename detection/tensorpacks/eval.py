@@ -15,7 +15,7 @@ import pycocotools.mask as cocomask
 
 from detection.tensorpacks.coco import COCOMeta
 from detection.tensorpacks.common import CustomResize
-from detection.config.tensorpack_config import config as cfg
+from detection.config.config import config as cfg
 
 from detection.core.detector import DetectionResult
 from detection.utils.bbox import clip_boxes

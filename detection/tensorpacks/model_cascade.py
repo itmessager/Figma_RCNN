@@ -5,7 +5,7 @@ from tensorpack.tfutils import get_current_tower_context
 from detection.tensorpacks.utils.box_ops import pairwise_iou
 from detection.tensorpacks.model_box import clip_boxes
 from detection.tensorpacks.model_frcnn import FastRCNNHead, BoxProposals, fastrcnn_outputs
-from detection.config.tensorpack_config import config as cfg
+from detection.config.config import config as cfg
 
 
 class CascadeRCNNHead(object):

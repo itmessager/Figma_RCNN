@@ -12,7 +12,7 @@ from tensorpack.utils import logger
 from tensorpack.utils.timer import timed_operation
 from tensorpack.utils.argtools import log_once
 
-from detection.config.tensorpack_config import config as cfg
+from detection.config.config import config as cfg
 
 class BoxBase(object):
     __slots__ = ['x1', 'y1', 'x2', 'y2']

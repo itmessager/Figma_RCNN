@@ -14,7 +14,7 @@ from tensorpack.tfutils.scope_utils import under_name_scope, auto_reuse_variable
 from tensorpack.models import Conv2D, layer_register
 
 from detection.tensorpacks.model_box import clip_boxes
-from detection.config.tensorpack_config import config as cfg
+from detection.config.config import config as cfg
 
 
 @layer_register(log_shape=True)

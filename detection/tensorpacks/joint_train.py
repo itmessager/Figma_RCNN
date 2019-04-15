@@ -56,7 +56,7 @@ from detection.tensorpacks.viz import (
     draw_predictions, draw_final_outputs)
 from detection.tensorpacks.eval import (
 eval_coco, detect_one_image, print_evaluation_scores, DetectionResult)
-from detection.config.tensorpack_config import finalize_configs, config as cfg
+from detection.config.config import finalize_configs, config as cfg
 
 
 class DetectionModel(ModelDesc):

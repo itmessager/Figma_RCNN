@@ -56,7 +56,7 @@ from detection.tensorpacks.viz import (
     draw_predictions, draw_final_outputs)
 from detection.tensorpacks.eval import (
 eval_coco, detect_one_image, print_evaluation_scores, DetectionResult)
-from detection.config.tensorpack_config import finalize_configs, config as cfg
+from detection.config.config import finalize_configs, config as cfg
 
 
 class DetectionModel(ModelDesc):
@@ -415,13 +415,13 @@ def visualize(model, model_path, nr_visualize=100, output_dir='output'):
             pbar.update()
 
 
-# def offline_evaluate(pred_func, output_file):
-#     df = get_eval_dataflow()
-#     all_results = eval_coco(
-#         df, lambda img: detect_one_image(img, pred_func))
-#     with open(output_file, 'w') as f:
-#         json.dump(all_results, f)
-#     print_evaluation_scores(output_file)
+def offline_evaluate(pred_func, output_file):
+    df = get_eval_dataflow()
+    all_results = eval_coco(
+        df, lambda img: detect_one_image(img, pred_func))
+    with open(output_file, 'w') as f:
+        json.dump(all_results, f)
+    print_evaluation_scores(output_file)
 
 
 def predict(pred_func, input_file):

@@ -74,6 +74,7 @@ def load_many(basedir, names, is_augment=False):
 
     # convert dict to list
     img_attr_list = []
+    id = 10000
     for img_attr in img_attr_dict.values():
         for key in img_attr.keys():
             if key == 'img':
@@ -93,6 +94,8 @@ def load_many(basedir, names, is_augment=False):
             for attr_name in attr_names:
                 img_attr[attr_name] = attr_augment(img_attr[attr_name])
 
+        img_attr['id'] =id
+        id += 1
         img_attr_list.append(img_attr)
     return img_attr_list
 
@@ -117,6 +120,5 @@ def box_augment(bboxes):
 
 if __name__ == '__main__':
     roidbs = load_many('/root/datasets/wider attribute', 'train', False)
-    roidbs2 = load_many('/root/datasets/wider attribute', 'train', True)
     #bbb = box_augment(roidb['bbox'])
     print("OK")

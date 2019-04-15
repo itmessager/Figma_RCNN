@@ -7,7 +7,7 @@ import tensorflow as tf
 
 from tensorpack.tfutils.scope_utils import under_name_scope
 
-from detection.config.tensorpack_config import config
+from detection.config.config import config
 
 
 @under_name_scope()

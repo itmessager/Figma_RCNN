@@ -20,7 +20,7 @@ from detection.tensorpacks.utils.np_box_ops import area as np_area
 from detection.tensorpacks.common import (
     DataFromListOfDict, CustomResize, filter_boxes_inside_shape,
     box_to_point8, point8_to_box, segmentation_to_mask)
-from detection.config.tensorpack_config import config as cfg
+from detection.config.config import config as cfg
 from detection.tensorpacks.wider_attr import load_many
 import random
 try:
@@ -896,7 +896,7 @@ def get_wider_eval_dataflow(shard=0, num_shards=1, augment=False):
     Args:
         shard, num_shards: to get subset of evaluation data
     """
-    roidbs_val = load_many('/root/datasets/wider attribute', 'val', augment)
+    roidbs_val = load_many(cfg.WIDER.BASEDIR, 'val', augment)
     roidbs = roidbs_val
     # for key in roidbs[4].keys():
     #     print(key)
@@ -905,7 +905,7 @@ def get_wider_eval_dataflow(shard=0, num_shards=1, augment=False):
     img_range = (shard * img_per_shard, (shard + 1) * img_per_shard if shard + 1 < num_shards else num_imgs)
 
     # no filter for training
-    ds = DataFromListOfDict(roidbs[img_range[0]: img_range[1]], ['file_name', 'id'])
+    ds = DataFromListOfDict(roidbs[img_range[0]: img_range[1]], ['img', 'bbox', 'id'])
 
     def f(fname):
         im = cv2.imread(fname, cv2.IMREAD_COLOR)
