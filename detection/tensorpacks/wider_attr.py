@@ -119,6 +119,6 @@ def box_augment(bboxes):
 
 
 if __name__ == '__main__':
-    roidbs = load_many('/root/datasets/wider attribute', 'train', False)
+    roidbs = load_many('/root/datasets/WiderAttribute', 'train', False)
     #bbb = box_augment(roidb['bbox'])
     print("OK")

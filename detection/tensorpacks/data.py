@@ -896,8 +896,8 @@ def get_wider_eval_dataflow(shard=0, num_shards=1, augment=False):
     Args:
         shard, num_shards: to get subset of evaluation data
     """
-    roidbs_val = load_many(cfg.WIDER.BASEDIR, 'val', augment)
-    roidbs = roidbs_val
+    roidbs_test = load_many(cfg.WIDER.BASEDIR, 'test', augment)
+    roidbs = roidbs_test
     # for key in roidbs[4].keys():
     #     print(key)
     num_imgs = len(roidbs)
@@ -905,7 +905,9 @@ def get_wider_eval_dataflow(shard=0, num_shards=1, augment=False):
     img_range = (shard * img_per_shard, (shard + 1) * img_per_shard if shard + 1 < num_shards else num_imgs)
 
     # no filter for training
-    ds = DataFromListOfDict(roidbs[img_range[0]: img_range[1]], ['img', 'bbox', 'id'])
+    ds = DataFromListOfDict(roidbs[img_range[0]: img_range[1]],
+                            ['img', 'bbox', 'id', 'male', 'longhair', 'sunglass', 'hat', 'tshirt', 'longsleeve',
+                             'formal', 'shorts', 'jeans', 'skirt', 'facemask', 'logo', 'stripe', 'longpants'])
 
     def f(fname):
         im = cv2.imread(fname, cv2.IMREAD_COLOR)
@@ -914,7 +916,7 @@ def get_wider_eval_dataflow(shard=0, num_shards=1, augment=False):
 
     ds = MapDataComponent(ds, f, 0)
     # Evaluation itself may be multi-threaded, therefore don't add prefetch here.
-    return ds
+    return roidbs, ds
 
 
 

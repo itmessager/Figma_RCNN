@@ -72,7 +72,23 @@ class ResNetC4Model(DetectionModel):
             # box of each anchor
             tf.placeholder(tf.float32, (None, None, cfg.RPN.NUM_ANCHOR, 4), 'anchor_boxes'),
             # box of each ground truth
-            tf.placeholder(tf.float32, (None, 4), 'gt_boxes')]
+            tf.placeholder(tf.float32, (None, 4), 'gt_boxes'),
+            # 14 attributes of each ground truth
+            tf.placeholder(tf.int64, (None,), 'male'),
+            tf.placeholder(tf.int64, (None,), 'longhair'),
+            tf.placeholder(tf.int64, (None,), 'sunglass'),
+            tf.placeholder(tf.int64, (None,), 'hat'),
+            tf.placeholder(tf.int64, (None,), 'tshirt'),
+            tf.placeholder(tf.int64, (None,), 'longsleeve'),
+            tf.placeholder(tf.int64, (None,), 'formal'),
+            tf.placeholder(tf.int64, (None,), 'shorts'),
+            tf.placeholder(tf.int64, (None,), 'jeans'),
+            tf.placeholder(tf.int64, (None,), 'longpants'),
+            tf.placeholder(tf.int64, (None,), 'skirt'),
+            tf.placeholder(tf.int64, (None,), 'facemask'),
+            tf.placeholder(tf.int64, (None,), 'logo'),
+            tf.placeholder(tf.int64, (None,), 'stripe')
+        ]
         return ret
 
     def build_graph(self, *inputs):
@@ -141,134 +157,131 @@ class ResNetC4Model(DetectionModel):
         # tf.reshape(person_scores, (-1,), name='person_scores')
         #
         # # Attributes branch
-        gt_boxes = inputs['gt_boxes']
+        x1, y1, w, h = tf.split(inputs['gt_boxes'], 4, axis=1)
+        gt_boxes = tf.concat([x1, y1, x1 + w, y1 + h], axis=1)
         person_roi_resized = roi_align(featuremap, gt_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE), 14)
         feature_attrs = resnet_conv5(person_roi_resized, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
         feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  #
         attrs_labels = attrs_predict(feature_attrs_gap, logits_to_predict)
 
 def eval_W(df, detect_func, tqdm_bar=None):
-    """
-    Args:
-        df: a DataFlow which produces (image, image_id)
-        detect_func: a callable, takes [image] and returns [DetectionResult]
-        tqdm_bar: a tqdm object to be shared among multiple evaluation instances. If None,
-            will create a new one.
-    Returns:
-        list of dict, to be dumped to COCO json format
-    """
+
     df.reset_state()
     all_results = []
-    # tqdm is not quite thread-safe: https://github.com/tqdm/tqdm/issues/323
     with ExitStack() as stack:
         if tqdm_bar is None:
             tqdm_bar = stack.enter_context(
                 tqdm.tqdm(total=df.size(), **get_tqdm_kwargs()))
-        for img, boxes, img_id in df:
-            results = detect_func(img, boxes)
-            for r in results:
-                res = {
-                    'image_id': int(img_id),
-                    'male': int(r.male),
-                    'longhair':int(r.longhair),
-                    'sunglass':int(r.sunglass),
-                    'hat':int(r.hat),
-                    'tshirt':int(r.tshirt),
-                    'longsleeve':int(r.longsleeve),
-                    'formal':int(r.formal),
-                    'shorts':int(r.shorts),
-                    'jeans':int(r.jeans),
-                    'skirt':int(r.skirt),
-                    'facemask':int(r.facemask),
-                    'logo':int(r.logo),
-                    'stripe':int(r.stripe),
-                    'longpants':int(r.longpants)
-                }
+        for img, boxes, img_id, male, longhair, sunglass, hat, tshirt, longsleeve, \
+            formal, shorts, jeans, skirt, facemask, logo, stripe, longpants in df:
+            results = detect_func(img, boxes, male, longhair, sunglass, hat, tshirt, longsleeve,
+                                  formal, shorts, jeans, skirt, facemask, logo, stripe, longpants)
 
-                all_results.append(res)
+            male, longhair, sunglass, hat, tshirt, longsleeve, \
+            formal, shorts, jeans, skirt, facemask, logo, stripe, longpants, \
+            male_predict, longhair_predict, sunglass_predict, hat_predict, tshirt_predict, \
+            longsleeve_predict, formal_predict, shorts_predict, jeans_predict, skirt_predict, \
+            facemask_predict, logo_predict, stripe_predict, longpants_predict = list(
+                zip(*[[int(r.male), int(r.longhair), int(r.sunglass), int(r.hat), int(r.tshirt), int(r.longsleeve),
+                       int(r.formal), int(r.shorts), int(r.jeans), int(r.skirt), int(r.facemask), int(r.logo),
+                       int(r.stripe), int(r.longpants), int(r.male_predict), int(r.longhair_predict),
+                       int(r.sunglass_predict), int(r.hat_predict), int(r.tshirt_predict), int(r.longsleeve_predict),
+                       int(r.formal_predict), int(r.shorts_predict), int(r.jeans_predict), int(r.skirt_predict),
+                       int(r.facemask_predict), int(r.logo_predict),
+                       int(r.stripe_predict), int(r.longpants_predict)]
+                      for r in results]))
+
+            res = {
+                'image_id': int(img_id),
+                'male': male,
+                'longhair': longhair,
+                'sunglass': sunglass,
+                'hat': hat,
+                'tshirt': tshirt,
+                'longsleeve': longsleeve,
+                'formal': formal,
+                'shorts': shorts,
+                'jeans': jeans,
+                'skirt': skirt,
+                'facemask': facemask,
+                'logo': logo,
+                'stripe': stripe,
+                'longpants': longpants,
+
+                'male_predict': male_predict,
+                'longhair_predict': longhair_predict,
+                'sunglass_predict': sunglass_predict,
+                'hat_predict': hat_predict,
+                'tshirt_predict': tshirt_predict,
+                'longsleeve_predict': longsleeve_predict,
+                'formal_predict': formal_predict,
+                'shorts_predict': shorts_predict,
+                'jeans_predict': jeans_predict,
+                'skirt_predict': skirt_predict,
+                'facemask_predict': facemask_predict,
+                'logo_predict': logo_predict,
+                'stripe_predict': stripe_predict,
+                'longpants_predict': longpants_predict
+
+
+
+            }
+
+            all_results.append(res)
             tqdm_bar.update(1)
     return all_results
 
 def offline_evaluate(pred_func, output_file):
-    df = get_wider_eval_dataflow()
+    datasets, df = get_wider_eval_dataflow()
     all_results = eval_W(
-        df, lambda img, box: eval_one_image(img, box, pred_func))
+        df, lambda img, boxes, male, longhair, sunglass, hat, tshirt, longsleeve,
+                   formal, shorts, jeans, skirt, facemask, logo, stripe, longpants: eval_one_image(img, boxes, male,
+                                                                                                   longhair, sunglass,
+                                                                                                   hat, tshirt,
+                                                                                                   longsleeve,
+                                                                                                   formal, shorts,
+                                                                                                   jeans, skirt,
+                                                                                                   facemask, logo,
+                                                                                                   stripe, longpants,
+                                                                                                   pred_func))
     with open(output_file, 'w') as f:
         json.dump(all_results, f)
-
-    # output_file = /root/datasets/wider_results.json
-    print_evaluation_scores(output_file)
-
-
-def print_evaluation_scores(json_file):
-    ret = {}
-    assert cfg.DATA.BASEDIR and os.path.isdir(cfg.DATA.BASEDIR)
-    annofile = os.path.join(
-        cfg.DATA.BASEDIR, 'annotations',
-        'instances_{}.json'.format(cfg.DATA.VAL))
-    coco = COCO(annofile)
-    cocoDt = coco.loadRes(json_file)
-    cocoEval = COCOeval(coco, cocoDt, 'bbox')
-    cocoEval.evaluate()
-    cocoEval.accumulate()
-    cocoEval.summarize()
-    fields = ['IoU=0.5:0.95', 'IoU=0.5', 'IoU=0.75', 'small', 'medium', 'large']
-    for k in range(6):
-        ret['mAP(bbox)/' + fields[k]] = cocoEval.stats[k]
-
-    if cfg.MODE_MASK:
-        cocoEval = COCOeval(coco, cocoDt, 'segm')
-        cocoEval.evaluate()
-        cocoEval.accumulate()
-        cocoEval.summarize()
-        for k in range(6):
-            ret['mAP(segm)/' + fields[k]] = cocoEval.stats[k]
-    return ret
-
-
-
-
-
-
-
-
-# def predict(pred_func, input_file):
-#
-#     img = cv2.imread(input_file, cv2.IMREAD_COLOR)
-#     results = detect_one_image(img, pred_func)
-#     final = draw_final_outputs(img, results)
-#     viz = np.concatenate((img, final), axis=1)
-#     tpviz.interactive_imshow(viz)
 
 
 DetectionResult = namedtuple(
     'DetectionResult',
     ['male', 'longhair', 'sunglass', 'hat', 'tshirt', 'longsleeve', 'formal', 'shorts',
-     'jeans', 'skirt', 'facemask', 'logo', 'stripe', 'longpants'])
+     'jeans', 'skirt', 'facemask', 'logo', 'stripe', 'longpants', 'male_predict', 'longhair_predict',
+     'sunglass_predict', 'hat_predict', 'tshirt_predict', 'longsleeve_predict', 'formal_predict',
+     'shorts_predict', 'jeans_predict', 'skirt_predict', 'facemask_predict', 'logo_predict',
+     'stripe_predict', 'longpants_predict'])
 
-def eval_one_image(img, box, model_func):
-    """
-    Run detection on one image, using the TF callable.
-    This function should handle the preprocessing internally.
 
-    Args:
-        img: an image
-        model_func: a callable from TF model,
-            takes image and returns (boxes, probs, labels, [masks])
-
-    Returns:
-        [DetectionResult]
-    """
+def eval_one_image(img, box, male, longhair, sunglass, hat, tshirt, longsleeve, formal, shorts, jeans, skirt, facemask,
+                   logo, stripe, longpants, model_func):
     resizer = CustomResize(cfg.PREPROC.TEST_SHORT_EDGE_SIZE, cfg.PREPROC.MAX_SIZE)
     resized_img = resizer.augment(img)
     scale = np.sqrt(resized_img.shape[0] * 1.0 / img.shape[0] * resized_img.shape[1] / img.shape[1])
     box = box * scale
-    attrs = model_func(resized_img, box)
 
-    results = [DetectionResult(*args) for args in zip(attrs[0], attrs[1], attrs[2], attrs[3],
-                                                      attrs[4], attrs[5], attrs[6], attrs[7],
-                                                      attrs[8], attrs[9], attrs[10], attrs[11],
-                                                      attrs[12], attrs[13])]
+    male, longhair, sunglass, hat, tshirt, \
+    longsleeve, formal, shorts, jeans, \
+    skirt, facemask, logo, stripe, longpants, \
+    male_predict, longhair_predict, sunglass_predict, hat_predict, tshirt_predict, \
+    longsleeve_predict, formal_predict, shorts_predict, jeans_predict, skirt_predict, \
+    facemask_predict, logo_predict, stripe_predict, longpants_predict = model_func(resized_img, box, male, longhair,
+                                                                                   sunglass, hat, tshirt, longsleeve,
+                                                                                   formal, shorts, jeans, skirt,
+                                                                                   facemask, logo, stripe, longpants)
+
+    results = [DetectionResult(*args) for args in zip(male, longhair, sunglass, hat, tshirt,
+                                                      longsleeve, formal, shorts, jeans,
+                                                      skirt, facemask, logo, stripe, longpants,
+                                                      male_predict, longhair_predict, sunglass_predict,
+                                                      hat_predict, tshirt_predict, longsleeve_predict, formal_predict,
+                                                      shorts_predict, jeans_predict, skirt_predict,
+                                                      facemask_predict, logo_predict, stripe_predict,
+                                                      longpants_predict)]
     return results
 
 
@@ -300,8 +313,19 @@ if __name__ == '__main__':
         pred = OfflinePredictor(PredictConfig(
             model=MODEL,
             session_init=get_model_loader(args.load),
-            input_names=['image', 'gt_boxes'],
-            output_names=['male_predict', 'longhair_predict', 'sunglass_predict',
+            input_names=['image', 'gt_boxes', 'male', 'longhair', 'sunglass',
+                         'hat', 'tshirt', 'longsleeve',
+                         'formal', 'shorts', 'jeans',
+                         'skirt', 'facemask', 'logo',
+                         'stripe', 'longpants'],
+
+            output_names=['male', 'longhair', 'sunglass',
+                          'hat', 'tshirt', 'longsleeve',
+                          'formal', 'shorts', 'jeans',
+                          'skirt', 'facemask', 'logo',
+                          'stripe', 'longpants',
+
+                          'male_predict', 'longhair_predict', 'sunglass_predict',
                           'hat_predict', 'tshirt_predict', 'longsleeve_predict',
                           'formal_predict', 'shorts_predict', 'jeans_predict',
                           'skirt_predict', 'facemask_predict', 'logo_predict',
