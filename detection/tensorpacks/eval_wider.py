@@ -162,9 +162,9 @@ class ResNetC4Model(DetectionModel):
         person_roi_resized = roi_align(featuremap, gt_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE), 14)
         feature_attrs = resnet_conv5(person_roi_resized, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
         feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  #
-        attrs_labels = attrs_predict(feature_attrs_gap, logits_to_predict)
+        attrs_predict(feature_attrs_gap)
 
-def eval_W(df, detect_func, tqdm_bar=None):
+def eval_W(df, eval_one_image, tqdm_bar=None):
 
     df.reset_state()
     all_results = []
@@ -174,7 +174,7 @@ def eval_W(df, detect_func, tqdm_bar=None):
                 tqdm.tqdm(total=df.size(), **get_tqdm_kwargs()))
         for img, boxes, img_id, male, longhair, sunglass, hat, tshirt, longsleeve, \
             formal, shorts, jeans, skirt, facemask, logo, stripe, longpants in df:
-            results = detect_func(img, boxes, male, longhair, sunglass, hat, tshirt, longsleeve,
+            results = eval_one_image(img, boxes, male, longhair, sunglass, hat, tshirt, longsleeve,
                                   formal, shorts, jeans, skirt, facemask, logo, stripe, longpants)
 
             male, longhair, sunglass, hat, tshirt, longsleeve, \
@@ -184,11 +184,11 @@ def eval_W(df, detect_func, tqdm_bar=None):
             facemask_predict, logo_predict, stripe_predict, longpants_predict = list(
                 zip(*[[int(r.male), int(r.longhair), int(r.sunglass), int(r.hat), int(r.tshirt), int(r.longsleeve),
                        int(r.formal), int(r.shorts), int(r.jeans), int(r.skirt), int(r.facemask), int(r.logo),
-                       int(r.stripe), int(r.longpants), int(r.male_predict), int(r.longhair_predict),
-                       int(r.sunglass_predict), int(r.hat_predict), int(r.tshirt_predict), int(r.longsleeve_predict),
-                       int(r.formal_predict), int(r.shorts_predict), int(r.jeans_predict), int(r.skirt_predict),
-                       int(r.facemask_predict), int(r.logo_predict),
-                       int(r.stripe_predict), int(r.longpants_predict)]
+                       int(r.stripe), int(r.longpants), float(r.male_predict), float(r.longhair_predict),
+                       float(r.sunglass_predict), float(r.hat_predict), float(r.tshirt_predict), float(r.longsleeve_predict),
+                       float(r.formal_predict), float(r.shorts_predict), float(r.jeans_predict), float(r.skirt_predict),
+                       float(r.facemask_predict), float(r.logo_predict),
+                       float(r.stripe_predict), float(r.longpants_predict)]
                       for r in results]))
 
             res = {
@@ -274,11 +274,27 @@ def eval_one_image(img, box, male, longhair, sunglass, hat, tshirt, longsleeve, 
                                                                                    formal, shorts, jeans, skirt,
                                                                                    facemask, logo, stripe, longpants)
 
+    male_predict, longhair_predict, sunglass_predict, \
+    hat_predict, tshirt_predict, longsleeve_predict, \
+    formal_predict, shorts_predict, jeans_predict, \
+    skirt_predict, facemask_predict, logo_predict, \
+    stripe_predict, longpants_predict = male_predict[:, 1], longhair_predict[:, 1], sunglass_predict[:, 1], \
+                                        hat_predict[:, 1], tshirt_predict[:, 1], longsleeve_predict[:, 1], \
+                                        formal_predict[:, 1], shorts_predict[:, 1], jeans_predict[:, 1], \
+                                        skirt_predict[:, 1], facemask_predict[:, 1], logo_predict[:, 1], \
+                                        stripe_predict[:, 1], longpants_predict[:, 1]
+
+
+
+
+
     results = [DetectionResult(*args) for args in zip(male, longhair, sunglass, hat, tshirt,
                                                       longsleeve, formal, shorts, jeans,
                                                       skirt, facemask, logo, stripe, longpants,
-                                                      male_predict, longhair_predict, sunglass_predict,
-                                                      hat_predict, tshirt_predict, longsleeve_predict, formal_predict,
+                                                      male_predict, longhair_predict,
+                                                      sunglass_predict,
+                                                      hat_predict, tshirt_predict, longsleeve_predict,
+                                                      formal_predict,
                                                       shorts_predict, jeans_predict, skirt_predict,
                                                       facemask_predict, logo_predict, stripe_predict,
                                                       longpants_predict)]
@@ -325,11 +341,11 @@ if __name__ == '__main__':
                           'skirt', 'facemask', 'logo',
                           'stripe', 'longpants',
 
-                          'male_predict', 'longhair_predict', 'sunglass_predict',
-                          'hat_predict', 'tshirt_predict', 'longsleeve_predict',
-                          'formal_predict', 'shorts_predict', 'jeans_predict',
-                          'skirt_predict', 'facemask_predict', 'logo_predict',
-                          'stripe_predict', 'longpants_predict'
+                          'pmale', 'plonghair', 'psunglass',
+                          'phat', 'ptshirt', 'plongsleeve',
+                          'pformal', 'pshorts', 'pjeans',
+                          'pskirt', 'pfacemask', 'plogo',
+                          'pstripe', 'plongpants',
                           ]))
 
         assert args.evaluate.endswith('.json'), args.evaluate

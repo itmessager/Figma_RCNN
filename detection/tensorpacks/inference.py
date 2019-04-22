@@ -142,7 +142,7 @@ class ResNetC4Model(DetectionModel):
         person_roi_resized = roi_align(featuremap, final_person_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE), 14)
         feature_attrs = resnet_conv5(person_roi_resized, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
         feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  #
-        attrs_labels = attrs_predict(feature_attrs_gap, logits_to_predict)
+        attrs_labels = attrs_predict(feature_attrs_gap, logits_to_predict_v2)
 
 
 def predict(pred_func, input_file):

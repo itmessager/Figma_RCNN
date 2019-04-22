@@ -137,31 +137,39 @@ def attr_output(name, feature):
     return attr
 
 
-def attrs_predict(feature, predict):
+def attrs_predict(feature, predict=None):
     """
-    Attribute network branchs
-    Args:
-        name: name scope
-        feature: feature of rois
-    Returns:
-        A Dict
-        attribute name: attribute logits
     """
-    attrs_logits = [predict(attr_output('male', feature), 'male'),
-                    predict(attr_output('longhair', feature), 'longhair'),
-                    predict(attr_output('sunglass', feature), 'sunglass'),
-                    predict(attr_output('hat', feature), 'hat'),
-                    predict(attr_output('tshirt', feature), 'tshirt'),
-                    predict(attr_output('longsleeve', feature), 'longsleeve'),
-                    predict(attr_output('formal', feature), 'formal'),
-                    predict(attr_output('shorts', feature), 'shorts'),
-                    predict(attr_output('jeans', feature), 'jeans'),
-                    predict(attr_output('skirt', feature), 'skirt'),
-                    predict(attr_output('facemask', feature), 'facemask'),
-                    predict(attr_output('logo', feature), 'logo'),
-                    predict(attr_output('stripe', feature), 'stripe'),
-                    predict(attr_output('longpants', feature), 'longpants')]
-
+    if predict:
+        attrs_logits = [predict(attr_output('male', feature), 'male'),
+                        predict(attr_output('longhair', feature), 'longhair'),
+                        predict(attr_output('sunglass', feature), 'sunglass'),
+                        predict(attr_output('hat', feature), 'hat'),
+                        predict(attr_output('tshirt', feature), 'tshirt'),
+                        predict(attr_output('longsleeve', feature), 'longsleeve'),
+                        predict(attr_output('formal', feature), 'formal'),
+                        predict(attr_output('shorts', feature), 'shorts'),
+                        predict(attr_output('jeans', feature), 'jeans'),
+                        predict(attr_output('skirt', feature), 'skirt'),
+                        predict(attr_output('facemask', feature), 'facemask'),
+                        predict(attr_output('logo', feature), 'logo'),
+                        predict(attr_output('stripe', feature), 'stripe'),
+                        predict(attr_output('longpants', feature), 'longpants')]
+    else:
+        attrs_logits = [tf.nn.softmax(attr_output('male', feature), name='pmale'),
+                        tf.nn.softmax(attr_output('longhair', feature), name='plonghair'),
+                        tf.nn.softmax(attr_output('sunglass', feature), name='psunglass'),
+                        tf.nn.softmax(attr_output('hat', feature), name='phat'),
+                        tf.nn.softmax(attr_output('tshirt', feature), name='ptshirt'),
+                        tf.nn.softmax(attr_output('longsleeve', feature), name='plongsleeve'),
+                        tf.nn.softmax(attr_output('formal', feature), name='pformal'),
+                        tf.nn.softmax(attr_output('shorts', feature), name='pshorts'),
+                        tf.nn.softmax(attr_output('jeans', feature), name='pjeans'),
+                        tf.nn.softmax(attr_output('skirt', feature), name='pskirt'),
+                        tf.nn.softmax(attr_output('facemask', feature), name='pfacemask'),
+                        tf.nn.softmax(attr_output('logo', feature), name='plogo'),
+                        tf.nn.softmax(attr_output('stripe', feature), name='pstripe'),
+                        tf.nn.softmax(attr_output('longpants', feature), name='plongpants')]
     return attrs_logits
 
 
