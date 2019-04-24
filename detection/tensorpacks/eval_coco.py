@@ -110,7 +110,7 @@ class ResNetC4Model(DetectionModel):
             tf.reshape(pred_boxes_decoded, [-1, 4]),
             tf.reshape(rpn_label_logits, [-1]),
             image_shape2d,
-            cfg.RPN.TEST_PRE_NMS_TOPK,  # 2000
+            cfg.RPN.TEST_PRE_NMS_TOPK,  # 6000
             cfg.RPN.TEST_POST_NMS_TOPK)  # 1000
 
         boxes_on_featuremap = proposal_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
@@ -143,43 +143,15 @@ class ResNetC4Model(DetectionModel):
             decoded_boxes, label_scores, name_scope='output')
 
 
-
-
-def eval_one_image(img, model_func):
-    orig_shape = img.shape[:2]
-    resizer = CustomResize(cfg.PREPROC.TEST_SHORT_EDGE_SIZE, cfg.PREPROC.MAX_SIZE)
-    resized_img = resizer.augment(img)
-    scale = np.sqrt(resized_img.shape[0] * 1.0 / img.shape[0] * resized_img.shape[1] / img.shape[1])
-    boxes, probs, labels = model_func(resized_img)
-    boxes = boxes / scale
-    # boxes are already clipped inside the graph, but after the floating point scaling, this may not be true any more.
-    boxes = np_clip_boxes(boxes, orig_shape)
-
-    results = [DetectionResult(*args) for args in zip(boxes, probs, labels)]
-    return results
-
-
 def offline_evaluate(pred_func, output_file):
     df = get_eval_dataflow()
-    all_results = eval_coco(
-        df, lambda img: eval_one_image(img, pred_func))
+    all_results = eval_coco(df, lambda img: detect_one_image(img, pred_func))
     with open(output_file, 'w') as f:
         json.dump(all_results, f)
     print_evaluation_scores(output_file)
 
+
 def detect_one_image(img, model_func):
-    """
-    Run detection on one image, using the TF callable.
-    This function should handle the preprocessing internally.
-
-    Args:
-        img: an image
-        model_func: a callable from TF model,
-            takes image and returns (boxes, probs, labels, [masks])
-
-    Returns:
-        [DetectionResult]
-    """
     orig_shape = img.shape[:2]
     resizer = CustomResize(cfg.PREPROC.TEST_SHORT_EDGE_SIZE, cfg.PREPROC.MAX_SIZE)
     resized_img = resizer.augment(img)
@@ -207,7 +179,7 @@ if __name__ == '__main__':
                                            "This argument is the path to the output json evaluation file")
     parser.add_argument('--predict', help="Run prediction on a given image. "
                                           "This argument is the path to the input image file")
-    parser.add_argument('--config', help="A list of KEY=VALUE to overwrite those defined in tensorpack_config.py",
+    parser.add_argument('--config', help="A list of KEY=VALUE to overwrite those defined in config.py",
                         nargs='+')
 
     args = parser.parse_args()
@@ -227,12 +199,12 @@ if __name__ == '__main__':
         output_names=['output/boxes', 'output/scores', 'output/labels']
     ))
 
-    # COCODetection(cfg.DATA.BASEDIR, 'val2014')  # load the class names into cfg.DATA.CLASS_NAMES
-    # predict(pred, args.predict)  # contain vislizaiton
-
-    assert args.evaluate.endswith('.json'), args.evaluate
-
-    offline_evaluate(pred, args.evaluate)
+    if args.predict:
+        COCODetection(cfg.DATA.BASEDIR, 'val2014')  # load the class names into cfg.DATA.CLASS_NAMES
+        predict(pred, args.predict)  # contain vislizaiton
+    if args.evaluate:
+        assert args.evaluate.endswith('.json'), args.evaluate
+        offline_evaluate(pred, args.evaluate)
 
 '''
 --config

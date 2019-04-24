@@ -88,7 +88,7 @@ _C.RPN.HEAD_DIM = 1024      # used in C4 only
 # for C4
 _C.RPN.TRAIN_PRE_NMS_TOPK = 12000
 _C.RPN.TRAIN_POST_NMS_TOPK = 2000
-_C.RPN.TEST_PRE_NMS_TOPK = 6000
+_C.RPN.TEST_PRE_NMS_TOPK = 6000     # 6000
 _C.RPN.TEST_POST_NMS_TOPK = 1000
 # _C.RPN.TEST_POST_NMS_TOPK = 1000  dm
 #  if you encounter OOM in inference, set this to a smaller number
@@ -131,8 +131,8 @@ _C.TEST.FRCNN_NMS_THRESH = 0.3
 
 # Smaller threshold value gives significantly better mAP. But we use 0.05 for consistency with Detectron.
 # mAP with 1e-4 threshold can be found at https://github.com/tensorpack/tensorpack/commit/26321ae58120af2568bdbf2269f32aa708d425a8#diff-61085c48abee915b584027e1085e1043  # noqa
-_C.TEST.RESULT_SCORE_THRESH = 0.3
-_C.TEST.RESULT_SCORE_THRESH_VIS = 0.6   # only visualize confident results
+_C.TEST.RESULT_SCORE_THRESH = 0.05
+_C.TEST.RESULT_SCORE_THRESH_VIS = 0.5   # only visualize confident results
 _C.TEST.RESULTS_PER_IM = 100
 
 

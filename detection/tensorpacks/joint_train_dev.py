@@ -576,7 +576,7 @@ if __name__ == '__main__':
                 output_names=MODEL.get_inference_tensor_names()[1]))
             if args.evaluate:
                 assert args.evaluate.endswith('.json'), args.evaluate
-                # offline_evaluate(pred, args.evaluate)
+                offline_evaluate(pred, args.evaluate)
             elif args.predict:
                 COCODetection(cfg.DATA.BASEDIR, 'val2014')  # Only to load the class names into caches
                 predict(pred, args.predict)
