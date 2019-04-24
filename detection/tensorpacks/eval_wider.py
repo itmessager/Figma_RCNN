@@ -223,8 +223,6 @@ def eval_W(df, eval_one_image, tqdm_bar=None):
                 'stripe_predict': stripe_predict,
                 'longpants_predict': longpants_predict
 
-
-
             }
 
             all_results.append(res)
@@ -234,16 +232,17 @@ def eval_W(df, eval_one_image, tqdm_bar=None):
 def offline_evaluate(pred_func, output_file):
     datasets, df = get_wider_eval_dataflow()
     all_results = eval_W(
-        df, lambda img, boxes, male, longhair, sunglass, hat, tshirt, longsleeve,
-                   formal, shorts, jeans, skirt, facemask, logo, stripe, longpants: eval_one_image(img, boxes, male,
-                                                                                                   longhair, sunglass,
-                                                                                                   hat, tshirt,
-                                                                                                   longsleeve,
-                                                                                                   formal, shorts,
-                                                                                                   jeans, skirt,
-                                                                                                   facemask, logo,
-                                                                                                   stripe, longpants,
-                                                                                                   pred_func))
+        df, lambda img, boxes, male, longhair, sunglass, hat, tshirt,
+                   longsleeve, formal, shorts, jeans, skirt, facemask,
+                   logo, stripe, longpants: eval_one_image(img, boxes, male,
+                                                           longhair, sunglass,
+                                                           hat, tshirt,
+                                                           longsleeve,
+                                                           formal, shorts,
+                                                           jeans, skirt,
+                                                           facemask, logo,
+                                                           stripe, longpants,
+                                                           pred_func))
     with open(output_file, 'w') as f:
         json.dump(all_results, f)
 
@@ -286,8 +285,6 @@ def eval_one_image(img, box, male, longhair, sunglass, hat, tshirt, longsleeve, 
 
 
 
-
-
     results = [DetectionResult(*args) for args in zip(male, longhair, sunglass, hat, tshirt,
                                                       longsleeve, formal, shorts, jeans,
                                                       skirt, facemask, logo, stripe, longpants,
@@ -306,7 +303,7 @@ def eval_one_image(img, box, male, longhair, sunglass, hat, tshirt, longsleeve, 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--load', help='load a model for evaluation or training. Can overwrite BACKBONE.WEIGHTS')
-    parser.add_argument('--evaluate', help="Run evaluation on COCO. "
+    parser.add_argument('--evaluate', help="Run evaluation on WIDER. "
                                            "This argument is the path to the output json evaluation file")
     parser.add_argument('--config', help="A list of KEY=VALUE to overwrite those defined in tensorpack_config.py",
                         nargs='+')
@@ -345,7 +342,7 @@ if __name__ == '__main__':
                           'phat', 'ptshirt', 'plongsleeve',
                           'pformal', 'pshorts', 'pjeans',
                           'pskirt', 'pfacemask', 'plogo',
-                          'pstripe', 'plongpants',
+                          'pstripe', 'plongpants'
                           ]))
 
         assert args.evaluate.endswith('.json'), args.evaluate
