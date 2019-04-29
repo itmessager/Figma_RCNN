@@ -292,10 +292,20 @@ def get_coco_wider_dataflow(augment):
         cfg.DATA.BASEDIR, cfg.DATA.TRAIN, add_gt=True, add_mask=cfg.MODE_MASK)
 
     #Just keep images that contain persons.
-    roidbs_coco = [roidb for roidb in roidbs_coco if np.sum(roidb['class'] == 1) / len(roidb['class']) >= 1 / 5]
+    #roidbs_coco = [roidb for roidb in roidbs_coco if np.sum(roidb['class'] == 1) / len(roidb['class']) >= 1 / 5]
 
     roidbs_wider = load_many(cfg.WIDER.BASEDIR, 'train', augment) + load_many(
         cfg.WIDER.BASEDIR, 'val', augment)
+
+    def attr_augment(names, multiple):
+        datalist = []
+        for name in names:
+            datalist += [roidb for roidb in roidbs_wider if np.sum(roidb[name] == 1) > 0]
+        return datalist * multiple
+
+    attr_names = ['sunglass', 'stripe', 'facemask', 'jeans']
+    roidbs_wider += attr_augment(attr_names, 2)
+
 
     """
     To train on your own data, change this to your loader.

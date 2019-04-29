@@ -37,7 +37,8 @@ from detection.tensorpacks.basemodel import (
 from detection.tensorpacks import model_frcnn
 from detection.tensorpacks import model_mrcnn
 from detection.tensorpacks.model_frcnn import (
-    sample_fast_rcnn_targets, fastrcnn_outputs,fastrcnn_predictions, BoxProposals, FastRCNNHead, attrs_head, attrs_predict, all_attrs_losses, attr_losses,
+    sample_fast_rcnn_targets, fastrcnn_outputs, fastrcnn_predictions, BoxProposals, FastRCNNHead, attrs_head,
+    attrs_predict, all_attrs_losses, attr_losses,
     attr_losses_v2, logits_to_predict)
 from detection.tensorpacks.model_mrcnn import maskrcnn_upXconv_head, maskrcnn_loss
 from detection.tensorpacks.model_rpn import rpn_head, rpn_losses, generate_rpn_proposals
@@ -191,12 +192,13 @@ class ResNetC4Model(DetectionModel):
         boxes_on_featuremap_ = gt_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
         roi_resized_ = roi_align(featuremap, boxes_on_featuremap_, 14)
         feature_attributes = resnet_conv5(roi_resized_, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
-        feature_gap_ = GlobalAvgPooling('gap', feature_attributes, data_format='channels_first')
-        attrs_logits = attrs_head('attrs', feature_gap_)
+
+
+        attrs_logits = attrs_head('attrs', feature_attributes)
 
         if is_training:
             # attributes loss
-            attrs_losses = all_attrs_losses(inputs, attrs_logits, attr_losses)
+            attrs_losses = all_attrs_losses(inputs, attrs_logits, attr_losses_v2)
             all_losses = [attrs_losses]
             # rpn loss  = label_loss, box_loss
             all_losses.extend(rpn_losses(

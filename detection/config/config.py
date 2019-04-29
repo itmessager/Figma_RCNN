@@ -88,7 +88,7 @@ _C.RPN.HEAD_DIM = 1024      # used in C4 only
 # for C4
 _C.RPN.TRAIN_PRE_NMS_TOPK = 12000
 _C.RPN.TRAIN_POST_NMS_TOPK = 2000
-_C.RPN.TEST_PRE_NMS_TOPK = 6000     # 6000
+_C.RPN.TEST_PRE_NMS_TOPK = 600   # 6000
 _C.RPN.TEST_POST_NMS_TOPK = 1000
 # _C.RPN.TEST_POST_NMS_TOPK = 1000  dm
 #  if you encounter OOM in inference, set this to a smaller number

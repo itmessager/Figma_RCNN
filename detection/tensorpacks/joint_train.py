@@ -10,7 +10,7 @@ import tqdm
 import numpy as np
 import json
 import six
-import os
+
 
 from concurrent.futures import ThreadPoolExecutor
 
@@ -37,8 +37,8 @@ from detection.tensorpacks.basemodel import (
 from detection.tensorpacks import model_frcnn
 from detection.tensorpacks import model_mrcnn
 from detection.tensorpacks.model_frcnn import (
-    sample_fast_rcnn_targets, fastrcnn_outputs,
-    fastrcnn_predictions, BoxProposals, FastRCNNHead, attrs_head, attrs_predict, all_attrs_losses, attr_losses)
+    sample_fast_rcnn_targets, fastrcnn_outputs,fastrcnn_predictions, BoxProposals, FastRCNNHead, attrs_head, attrs_predict, all_attrs_losses, attr_losses,
+    attr_losses_v2, logits_to_predict)
 from detection.tensorpacks.model_mrcnn import maskrcnn_upXconv_head, maskrcnn_loss
 from detection.tensorpacks.model_rpn import rpn_head, rpn_losses, generate_rpn_proposals
 from detection.tensorpacks.model_fpn import (
@@ -50,7 +50,7 @@ from detection.tensorpacks.model_box import (
 
 from detection.tensorpacks.data import (
     get_train_dataflow, get_eval_dataflow,
-    get_all_anchors, get_all_anchors_fpn, get_wider_dataflow)
+    get_all_anchors, get_all_anchors_fpn, get_wider_dataflow, get_coco_wider_dataflow)
 from detection.tensorpacks.viz import (
     draw_annotation, draw_proposal_recall,
     draw_predictions, draw_final_outputs)
@@ -196,7 +196,7 @@ class ResNetC4Model(DetectionModel):
 
         if is_training:
             # attributes loss
-            attrs_losses = all_attrs_losses(inputs, attrs_logits, attr_losses)
+            attrs_losses = all_attrs_losses(inputs, attrs_logits, attr_losses_v2)
             all_losses = [attrs_losses]
             # rpn loss  = label_loss, box_loss
             all_losses.extend(rpn_losses(
@@ -232,7 +232,7 @@ class ResNetC4Model(DetectionModel):
             person_roi_resized = roi_align(featuremap, final_person_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE), 14)
             feature_attrs = resnet_conv5(person_roi_resized, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
             feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')  #
-            attrs_labels = attrs_predict(feature_attrs_gap)
+            attrs_labels = attrs_predict(feature_attrs_gap, logits_to_predict)
 
 class ResNetFPNModel(DetectionModel):
 
@@ -576,7 +576,7 @@ if __name__ == '__main__':
                 output_names=MODEL.get_inference_tensor_names()[1]))
             if args.evaluate:
                 assert args.evaluate.endswith('.json'), args.evaluate
-                # offline_evaluate(pred, args.evaluate)
+                offline_evaluate(pred, args.evaluate)
             elif args.predict:
                 COCODetection(cfg.DATA.BASEDIR, 'val2014')  # Only to load the class names into caches
                 predict(pred, args.predict)
@@ -607,7 +607,7 @@ if __name__ == '__main__':
                 (steps * factor // stepnum, cfg.TRAIN.BASE_LR * mult))
         logger.info("Warm Up Schedule (steps, value): " + str(warmup_schedule))
         logger.info("LR Schedule (epochs, value): " + str(lr_schedule))
-        train_dataflow = get_wider_dataflow()   # get the wider datasets
+        train_dataflow = get_coco_wider_dataflow(False)   # get the wider datasets
         # This is what's commonly referred to as "epochs"
         total_passes = cfg.TRAIN.LR_SCHEDULE[-1] * 8 / train_dataflow.size()
         logger.info("Total passes of the training set is: {}".format(total_passes))
@@ -663,12 +663,16 @@ FRCNN.BATCH_PER_IM=64
 PREPROC.SHORT_EDGE_SIZE=600
 PREPROC.MAX_SIZE=1024
 TRAIN.LR_SCHEDULE=[150000,230000,280000]
+BACKBONE.WEIGHTS=/home/ds/dev/datasets/COCO-R50C4-MaskRCNN-Standard.npz
+DATA.BASEDIR=/home/ds/dev/datasets/COCO/DIR/
+WIDER.BASEDIR=/home/ds/dev/datasets/WiderAttribute/
+
+
+--config
 BACKBONE.WEIGHTS=/root/datasets/COCO-R50C4-MaskRCNN-Standard.npz
 DATA.BASEDIR=/root/datasets/COCO/DIR/
-
-
+WIDER.BASEDIR=/root/datasets/WiderAttribute/
 '''
-
 
 '''
 
@@ -678,6 +682,5 @@ DATA.BASEDIR=/root/datasets/COCO/DIR/
 /home/Figma_RCNN/detection/tensorpacks/train_log/maskrcnn/checkpoint
 --config 
 MODE_MASK=False
-
 
 '''

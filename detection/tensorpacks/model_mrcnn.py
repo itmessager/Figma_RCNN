@@ -65,18 +65,17 @@ def maskrcnn_upXconv_head(feature, num_category, num_convs, norm=None):
     """
     assert norm in [None, 'GN'], norm
     l = feature
-    with varreplace.freeze_variables(stop_gradient=False, skip_collection=True):
-        with argscope([Conv2D, Conv2DTranspose], data_format='channels_first',
-                      kernel_initializer=tf.variance_scaling_initializer(
-                          scale=2.0, mode='fan_out', distribution='normal')):
-            # c2's MSRAFill is fan_out
-            for k in range(num_convs):
-                l = Conv2D('fcn{}'.format(k), l, cfg.MRCNN.HEAD_DIM, 3, activation=tf.nn.relu)
-                if norm is not None:
-                    l = GroupNorm('gn{}'.format(k), l)
-            l = Conv2DTranspose('deconv', l, cfg.MRCNN.HEAD_DIM, 2, strides=2, activation=tf.nn.relu)
-            l = Conv2D('conv', l, num_category, 1)
-        return l
+    with argscope([Conv2D, Conv2DTranspose], data_format='channels_first',
+                  kernel_initializer=tf.variance_scaling_initializer(
+                      scale=2.0, mode='fan_out', distribution='normal')):
+        # c2's MSRAFill is fan_out
+        for k in range(num_convs):
+            l = Conv2D('fcn{}'.format(k), l, cfg.MRCNN.HEAD_DIM, 3, activation=tf.nn.relu)
+            if norm is not None:
+                l = GroupNorm('gn{}'.format(k), l)
+        l = Conv2DTranspose('deconv', l, cfg.MRCNN.HEAD_DIM, 2, strides=2, activation=tf.nn.relu)
+        l = Conv2D('conv', l, num_category, 1)
+    return l
 
 
 def maskrcnn_up4conv_head(*args, **kwargs):
