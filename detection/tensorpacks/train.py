@@ -591,8 +591,7 @@ if __name__ == '__main__':
                 (steps * factor // stepnum, cfg.TRAIN.BASE_LR * mult))
         logger.info("Warm Up Schedule (steps, value): " + str(warmup_schedule))
         logger.info("LR Schedule (epochs, value): " + str(lr_schedule))
-        # train_dataflow = get_train_dataflow()   # get the coco datasets
-        train_dataflow = get_wider_boxes()   # get the wider datasets
+        train_dataflow = get_train_dataflow()   # get the coco datasets
         # This is what's commonly referred to as "epochs"
         total_passes = cfg.TRAIN.LR_SCHEDULE[-1] * 8 / train_dataflow.size()
         logger.info("Total passes of the training set is: {}".format(total_passes))
