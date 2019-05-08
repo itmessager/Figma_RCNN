@@ -11,7 +11,7 @@ import numpy as np
 
 
 def make_dataset(root, subset):
-    assert subset in ['train', 'val', 'test.py']
+    assert subset in ['train', 'val', 'test']
 
     data = []
     attr_names = ['male', 'longhair', 'sunglass', 'hat', 'tshirt', 'longsleeve', 'formal', 'shorts', 'jeans',
@@ -56,8 +56,7 @@ def make_dataset(root, subset):
 
 def load_many(basedir, names, is_augment=False):
     attr_names = ['male', 'longhair', 'sunglass', 'hat', 'tshirt', 'longsleeve', 'formal', 'shorts', 'jeans',
-                  'longpants',
-                  'skirt', 'facemask', 'logo', 'stripe']
+                  'longpants','skirt', 'facemask', 'logo', 'stripe']
     train_data_list = make_dataset(basedir, names)
     # a list contain  16 attributes of each roi
     img_attr_dict = {}
@@ -75,6 +74,7 @@ def load_many(basedir, names, is_augment=False):
 
     # convert dict to list
     img_attr_list = []
+    id = 10000
     for img_attr in img_attr_dict.values():
         for key in img_attr.keys():
             if key == 'img':
@@ -94,6 +94,8 @@ def load_many(basedir, names, is_augment=False):
             for attr_name in attr_names:
                 img_attr[attr_name] = attr_augment(img_attr[attr_name])
 
+        img_attr['id'] =id
+        id += 1
         img_attr_list.append(img_attr)
     return img_attr_list
 
@@ -110,14 +112,13 @@ def box_augment(bboxes):
     bboxes_aug = bboxes
     for box in bboxes:
         #temp = [np.random.normal(box_i, 0.04*(abs(box_i)+box_i),size=5) for box_i in box]
-        temp = [np.random.normal(box_i, 0.02*abs(box[2]+box[3]), size=5) for box_i in box]
+        temp = [np.random.normal(box_i, 0.01*abs(box[2]+box[3]), size=5) for box_i in box]
         b_aug = np.array(list(zip(temp[0], temp[1], temp[2], temp[3])))
         bboxes_aug = np.concatenate((bboxes_aug, b_aug), axis=0)
     return bboxes_aug
 
 
 if __name__ == '__main__':
-    roidbs = load_many('/root/datasets/wider attribute', 'train', False)
-    roidbs2 = load_many('/root/datasets/wider attribute', 'train', True)
+    roidbs = load_many('/root/datasets/WiderAttribute', 'train', False)
     #bbb = box_augment(roidb['bbox'])
     print("OK")

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# File: tensorpack_config.py
+# File: config.py
 
 import numpy as np
 import os
@@ -15,7 +15,7 @@ _C = config     # short alias to avoid coding
 
 # mode flags ---------------------
 _C.TRAINER = 'replicated'  # options: 'horovod', 'replicated'
-_C.MODE_MASK = True        # FasterRCNN or MaskRCNN
+_C.MODE_MASK = False        # FasterRCNN or MaskRCNN
 _C.MODE_FPN = False
 
 # dataset -----------------------
@@ -24,6 +24,7 @@ _C.DATA.TRAIN = ['train2014', 'valminusminival2014']   # i.e., trainval35k
 _C.DATA.VAL = 'minival2014'   # For now, only support evaluation on single dataset
 _C.DATA.NUM_CATEGORY = 80    # 80 categories.
 _C.DATA.CLASS_NAMES = []  # NUM_CLASS (NUM_CATEGORY+1) strings, to be populated later by data loader. The first is BG.
+_C.WIDER.BASEDIR = '/root/datasets/WiderAttribute/'
 
 # basemodel ----------------------
 _C.BACKBONE.WEIGHTS = ''   # /path/to/weights.npz
@@ -54,7 +55,7 @@ _C.TRAIN.STEPS_PER_EPOCH = 500
 # LR_SCHEDULE means "steps" only when total batch size is 8.
 # Otherwise the actual steps to decrease learning rate are computed from the schedule.
 # Therefore, there is *no need* to modify the config if you only change tdhe number of GPUs.
-_C.TRAIN.LR_SCHEDULE = [2000, 240000, 280000]  # "1x" schedule in detectron
+_C.TRAIN.LR_SCHEDULE = [120000, 160000, 180000]  # "1x" schedule in detectron
 # _C.TRAIN.LR_SCHEDULE = [240000, 320000, 360000]    # "2x" schedule in detectron
 _C.TRAIN.NUM_EVALS = 20  # number of evaluations to run during training
 
@@ -87,7 +88,7 @@ _C.RPN.HEAD_DIM = 1024      # used in C4 only
 # for C4
 _C.RPN.TRAIN_PRE_NMS_TOPK = 12000
 _C.RPN.TRAIN_POST_NMS_TOPK = 2000
-_C.RPN.TEST_PRE_NMS_TOPK = 6000
+_C.RPN.TEST_PRE_NMS_TOPK = 600    # 6000
 _C.RPN.TEST_POST_NMS_TOPK = 1000
 # _C.RPN.TEST_POST_NMS_TOPK = 1000  dm
 #  if you encounter OOM in inference, set this to a smaller number

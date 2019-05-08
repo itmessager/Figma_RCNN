@@ -81,9 +81,9 @@ def draw_final_outputs(img, results, show_ids=None):
     boxes = np.asarray([r.box for r in results])
     ret = viz.draw_boxes(img, boxes, tags)
 
-    for r in results:
-        if r.mask is not None:
-            ret = draw_mask(ret, r.mask)
+    # for r in results:
+    #     if r.mask is not None:
+    #         ret = draw_mask(ret, r.mask)
     return ret
 
 

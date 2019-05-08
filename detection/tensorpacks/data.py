@@ -406,9 +406,9 @@ def get_attributes_dataflow(augment=False):
     """
     # roidbs = load_many(cfg.DATA.BASEDIR, cfg.DATA.TRAIN)
     logger.info("loading wider attributes dataset...")
-    roidbs_train = load_many('/root/datasets/wider attribute', 'train', augment)
-    roidbs_val = load_many('/root/datasets/wider attribute', 'val', augment)
-    roidbs = roidbs_train+roidbs_val
+    roidbs_train = load_many('/root/datasets/WiderAttribute', 'train', augment)
+    roidbs_val = load_many('/root/datasets/WiderAttribute', 'val', augment)
+    roidbs = roidbs_train + roidbs_val
     logger.info("load finished!")
     """
     To train on your own data, change this to your loader.
@@ -467,8 +467,8 @@ def get_attributes_dataflow(augment=False):
         ret = {'image': im, 'gt_boxes': boxes, 'male': male, 'longhair': longhair, 'sunglass': sunglass, 'hat': hat,
                'tshirt': tshirt, 'longsleeve': longsleeve, 'formal': formal, 'shorts': shorts, 'jeans': jeans,
                'longpants': longpants, 'skirt': skirt, 'facemask': facemask, 'logo': logo, 'stripe': stripe,
-               'anchor_labels': get_rpn_anchor_input(im, boxes, np.zeros(len(boxes),dtype=int))[0],
-               'anchor_boxes': get_rpn_anchor_input(im, boxes, np.zeros(len(boxes),dtype=int))[1]}
+               'anchor_labels': get_rpn_anchor_input(im, boxes, np.zeros(len(boxes), dtype=int))[0],
+               'anchor_boxes': get_rpn_anchor_input(im, boxes, np.zeros(len(boxes), dtype=int))[1]}
         return ret
 
     if cfg.TRAINER == 'horovod':
@@ -478,7 +478,125 @@ def get_attributes_dataflow(augment=False):
         ds = MultiProcessMapDataZMQ(ds, 10, preprocess)
     return ds
 
+def get_wider_dataflow(augment=False):
+    """
+    Return a training dataflow. Each datapoint consists of the following:
 
+    An image: (h, w, 3),
+
+    1 or more pairs of (anchor_labels, anchor_boxes):
+    anchor_labels: (h', w', NA)
+    anchor_boxes: (h', w', NA, 4)
+
+    gt_boxes: (N, 4)
+    gt_labels: (N,)
+
+    If MODE_MASK, gt_masks: (N, h, w)
+    """
+
+    logger.info("loading wider attributes dataset...")
+    roidbs_train = load_many(cfg.WIDER.BASEDIR, 'train', augment)
+    roidbs_test = load_many(cfg.WIDER.BASEDIR, 'test', augment)
+    roidbs = roidbs_train + roidbs_test
+
+    logger.info("load finished!")
+    """
+    To train on your own data, change this to your loader.
+    Produce "roidbs" as a list of dict, in the dict the following keys are needed for training:
+    height, width: integer
+    file_name: str, full path to the image
+    boxes: numpy array of kx4 floats
+    class: numpy array of k integers
+    is_crowd: k booleans. Use k False if you don't know what it means.
+
+    """
+
+    # Valid training images should have at least one fg box.
+    # But this filter shall not be applied for testing.
+    num = len(roidbs)
+    roidbs = list(filter(lambda img: len(img['bbox']) > 0, roidbs))
+    logger.info("Filtered {} images which contain no non-crowd groudtruth boxes. Total #images for training: {}".format(
+        num - len(roidbs), len(roidbs)))
+
+    ds = DataFromList(roidbs, shuffle=True)
+
+    aug = imgaug.AugmentorList(
+        [CustomResize(cfg.PREPROC.TRAIN_SHORT_EDGE_SIZE, cfg.PREPROC.MAX_SIZE),
+         imgaug.Flip(horiz=True)])
+
+    def preprocess(roidb):
+        fname = roidb['img']
+        x1, y1, w, h = np.split(roidb['bbox'], 4, axis=1)
+        boxes = np.concatenate([x1, y1, x1 + w, y1 + h], axis=1)
+
+        klass = np.ones(len(roidb['bbox']), dtype=np.int32)
+
+        male = roidb['male']
+        longhair = roidb['longhair']
+        sunglass = roidb['sunglass']
+        hat = roidb['hat']
+        tshirt = roidb['tshirt']
+        longsleeve = roidb['longsleeve']
+        formal = roidb['formal']
+        shorts = roidb['shorts']
+        jeans = roidb['jeans']
+        longpants = roidb['longpants']
+        skirt = roidb['skirt']
+        facemask = roidb['facemask']
+        logo = roidb['logo']
+        stripe = roidb['stripe']
+
+        boxes = np.copy(boxes)
+        im = cv2.imread(fname, cv2.IMREAD_COLOR)
+        assert im is not None, fname
+        im = im.astype('float32')
+        # assume floatbox as input
+        assert boxes.dtype == np.float32, "Loader has to return floating point boxes!"
+
+        # augmentation:
+        im, params = aug.augment_return_params(im)
+        points = box_to_point8(boxes)
+        points = aug.augment_coords(points, params)
+        boxes = point8_to_box(points)
+        assert np.min(np_area(boxes)) > 0, "Some boxes have zero area!"
+
+        ret = {'image': im}
+        # rpn anchor:
+        try:
+
+            # anchor_labels, anchor_boxes
+            ret['anchor_labels'], ret['anchor_boxes'] = get_rpn_anchor_input(im, boxes, np.zeros(len(boxes), dtype=int))
+            ret['gt_boxes'] = boxes
+            ret['gt_labels'] = klass
+
+            ret['male'] = male
+            ret['longhair'] = longhair
+            ret['sunglass'] = sunglass
+            ret['hat'] = hat
+            ret['tshirt'] = tshirt
+            ret['longsleeve'] = longsleeve
+            ret['formal'] = formal
+            ret['shorts'] = shorts
+            ret['jeans'] = jeans
+            ret['longpants'] = longpants
+            ret['skirt'] = skirt
+            ret['facemask'] = facemask
+            ret['logo'] = logo
+            ret['stripe'] = stripe
+
+            if not len(boxes):
+                raise MalformedData("No valid gt_boxes!")
+        except MalformedData as e:
+            log_once("Input {} is filtered for training: {}".format(fname, str(e)), 'warn')
+            return None
+        return ret
+
+    if cfg.TRAINER == 'horovod':
+        ds = MultiThreadMapData(ds, 5, preprocess)
+        # MPI does not like fork()
+    else:
+        ds = MultiProcessMapDataZMQ(ds, 10, preprocess)
+    return ds
 
 def get_eval_dataflow(shard=0, num_shards=1):
     """
@@ -504,6 +622,35 @@ def get_eval_dataflow(shard=0, num_shards=1):
     ds = MapDataComponent(ds, f, 0)
     # Evaluation itself may be multi-threaded, therefore don't add prefetch here.
     return ds
+
+
+def get_wider_eval_dataflow(shard=0, num_shards=1, augment=False):
+    """
+    Args:
+        shard, num_shards: to get subset of evaluation data
+    """
+    roidbs_test = load_many(cfg.WIDER.BASEDIR, 'test', augment)
+    roidbs = roidbs_test
+    # for key in roidbs[4].keys():
+    #     print(key)
+    num_imgs = len(roidbs)
+    img_per_shard = num_imgs // num_shards
+    img_range = (shard * img_per_shard, (shard + 1) * img_per_shard if shard + 1 < num_shards else num_imgs)
+
+    # no filter for training
+    ds = DataFromListOfDict(roidbs[img_range[0]: img_range[1]],
+                            ['img', 'bbox', 'id', 'male', 'longhair', 'sunglass', 'hat', 'tshirt', 'longsleeve',
+                             'formal', 'shorts', 'jeans', 'skirt', 'facemask', 'logo', 'stripe', 'longpants'])
+
+    def f(fname):
+        im = cv2.imread(fname, cv2.IMREAD_COLOR)
+        assert im is not None, fname
+        return im
+
+    ds = MapDataComponent(ds, f, 0)
+    # Evaluation itself may be multi-threaded, therefore don't add prefetch here.
+    return roidbs, ds
+
 
 
 if __name__ == '__main__':

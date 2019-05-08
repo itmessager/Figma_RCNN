@@ -36,7 +36,7 @@ from detection.tensorpacks.basemodel import (
 
 from detection.tensorpacks.model_frcnn import (
     sample_fast_rcnn_targets, fastrcnn_outputs, attrs_head,
-    fastrcnn_predictions, BoxProposals, FastRCNNHead, attr_losses, all_attrs_losses)
+    fastrcnn_predictions, BoxProposals, FastRCNNHead, attr_losses, attr_losses_v2, all_attrs_losses)
 from detection.tensorpacks.model_box import (
     clip_boxes, crop_and_resize, roi_align, RPNAnchors)
 
@@ -88,23 +88,14 @@ class ResNetC4Model(DetectionModel):
             tf.placeholder(tf.int64, (None,), 'hat'),
             # tshort_labels of each ground truth
             tf.placeholder(tf.int64, (None,), 'tshirt'),
-            # 6
             tf.placeholder(tf.int64, (None,), 'longsleeve'),
-            # 7
             tf.placeholder(tf.int64, (None,), 'formal'),
-            # 8
             tf.placeholder(tf.int64, (None,), 'shorts'),
-            # 9
             tf.placeholder(tf.int64, (None,), 'jeans'),
-            # 10
             tf.placeholder(tf.int64, (None,), 'longpants'),
-            # 11
             tf.placeholder(tf.int64, (None,), 'skirt'),
-            # 12
             tf.placeholder(tf.int64, (None,), 'facemask'),
-            # 13
             tf.placeholder(tf.int64, (None,), 'logo'),
-            # 14
             tf.placeholder(tf.int64, (None,), 'stripe')]
 
         return ret
@@ -187,7 +178,7 @@ class ResNetC4Model(DetectionModel):
         feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')
 
         attrs_logits = attrs_head('attrs', feature_attrs_gap)
-        attrs_loss = all_attrs_losses(inputs, attrs_logits)
+        attrs_loss = all_attrs_losses(inputs, attrs_logits, attr_losses_v2)
 
         all_losses = [attrs_loss]
         # male loss

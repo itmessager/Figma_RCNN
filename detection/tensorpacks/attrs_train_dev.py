@@ -36,7 +36,7 @@ from detection.tensorpacks.basemodel import (
 
 from detection.tensorpacks.model_frcnn import (
     sample_fast_rcnn_targets, fastrcnn_outputs, attrs_head,
-    fastrcnn_predictions, BoxProposals, FastRCNNHead, attr_losses, all_attrs_losses)
+    fastrcnn_predictions, BoxProposals, FastRCNNHead, attr_losses, attr_losses_v2, all_attrs_losses)
 from detection.tensorpacks.model_box import (
     clip_boxes, crop_and_resize, roi_align, RPNAnchors)
 
@@ -78,35 +78,21 @@ class ResNetC4Model(DetectionModel):
             tf.placeholder(tf.int32, (None, None, cfg.RPN.NUM_ANCHOR), 'anchor_labels'),  # NUM_ANCHOR = 5*3
             # box of each anchor
             tf.placeholder(tf.float32, (None, None, cfg.RPN.NUM_ANCHOR, 4), 'anchor_boxes'),
-            # male_labels of each ground truth
+            # attributes labels of each ground truth
             tf.placeholder(tf.int64, (None,), 'male'),
-            # longhair_labels of each ground truth
             tf.placeholder(tf.int64, (None,), 'longhair'),
-            # sunglass_labels of each ground truth
             tf.placeholder(tf.int64, (None,), 'sunglass'),
-            # hat_labels of each ground truth
             tf.placeholder(tf.int64, (None,), 'hat'),
-            # tshort_labels of each ground truth
             tf.placeholder(tf.int64, (None,), 'tshirt'),
-            # 6
             tf.placeholder(tf.int64, (None,), 'longsleeve'),
-            # 7
             tf.placeholder(tf.int64, (None,), 'formal'),
-            # 8
             tf.placeholder(tf.int64, (None,), 'shorts'),
-            # 9
             tf.placeholder(tf.int64, (None,), 'jeans'),
-            # 10
             tf.placeholder(tf.int64, (None,), 'longpants'),
-            # 11
             tf.placeholder(tf.int64, (None,), 'skirt'),
-            # 12
             tf.placeholder(tf.int64, (None,), 'facemask'),
-            # 13
             tf.placeholder(tf.int64, (None,), 'logo'),
-            # 14
             tf.placeholder(tf.int64, (None,), 'stripe')]
-
         return ret
 
     def build_graph(self, *inputs):
@@ -163,34 +149,15 @@ class ResNetC4Model(DetectionModel):
         final_boxes, final_scores, final_labels = fastrcnn_predictions(
             decoded_boxes, label_scores, name_scope='output')
 
-        feature_maskrcnn = resnet_conv5(roi_resized,
-                                        cfg.BACKBONE.RESNET_NUM_BLOCK[
-                                            -1])  # nxcx7x7 # RESNET_NUM_BLOCK = [3, 4, 6, 3]
-        # Keep C5 feature to be shared with mask branch
-        mask_logits = maskrcnn_upXconv_head(
-            'maskrcnn', feature_maskrcnn, cfg.DATA.NUM_CATEGORY, 0)  # #result x #cat x 14x14
-        # Assume only person here
-        person_labels = tf.ones_like(inputs['male'])
-        indices = tf.stack([tf.range(tf.size(person_labels)), tf.to_int32(person_labels) - 1], axis=1)
-        final_mask_logits = tf.gather_nd(mask_logits, indices)  # #resultx14x14
-        final_mask_logits = tf.sigmoid(final_mask_logits, name='output/masks')
-        mask = False
-        if mask:
-            final_mask_logits_expand = tf.expand_dims(final_mask_logits, axis=1)
-            final_mask_logits_tile = tf.tile(final_mask_logits_expand, multiples=[1, 1024, 1, 1])
-            fg_roi_resized = tf.where(final_mask_logits_tile >= 0.5, roi_resized,
-                                      roi_resized * 0.5)
-            feature_attrs = resnet_conv5_attr(fg_roi_resized,
-                                              cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
-            feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')
-        # build attrs branch
+        # attributes branch
+        feature_attributes = resnet_conv5_attr(roi_resized, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
+        feature_attrs_gap = GlobalAvgPooling('gap', feature_attributes, data_format='channels_first')
+        add_conv = False
+        if add_conv:
+            attrs_logits = attrs_head('attrs', feature_attributes)
         else:
-            feature_attrs = resnet_conv5_attr(roi_resized,
-                                              cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
-            feature_attrs_gap = GlobalAvgPooling('gap', feature_attrs, data_format='channels_first')
-
-        attrs_logits = attrs_head('attrs', feature_attrs_gap)
-        attrs_loss = all_attrs_losses(inputs, attrs_logits)
+            attrs_logits = attrs_head('attrs', feature_attrs_gap)
+        attrs_loss = all_attrs_losses(inputs, attrs_logits, attr_losses_v2)
 
         all_losses = [attrs_loss]
         # male loss
@@ -199,95 +166,8 @@ class ResNetC4Model(DetectionModel):
         all_losses.append(wd_cost)
         total_cost = tf.add_n(all_losses, 'total_cost')
         add_moving_summary(wd_cost, total_cost)
+
         return total_cost
-
-
-class EvalCallback(Callback):
-    """
-    A callback that runs COCO evaluation once a while.
-    It supports multi-gpu evaluation.
-    """
-
-    _chief_only = False
-
-    def __init__(self, in_names, out_names):
-        self._in_names, self._out_names = in_names, out_names
-
-    def _setup_graph(self):
-        num_gpu = cfg.TRAIN.NUM_GPUS
-        if cfg.TRAINER == 'replicated':
-            # Use two predictor threads per GPU to get better throughput
-            self.num_predictor = num_gpu * 2
-            self.predictors = [self._build_coco_predictor(k % num_gpu) for k in range(self.num_predictor)]
-            self.dataflows = [get_eval_dataflow(shard=k, num_shards=self.num_predictor)
-                              for k in range(self.num_predictor)]
-        else:
-            # Only eval on the first machine.
-            # Alternatively, can eval on all ranks and use allgather, but allgather sometimes hangs
-            self._horovod_run_eval = hvd.rank() == hvd.local_rank()
-            if self._horovod_run_eval:
-                self.predictor = self._build_coco_predictor(0)
-                self.dataflow = get_eval_dataflow(shard=hvd.local_rank(), num_shards=hvd.local_size())
-
-            self.barrier = hvd.allreduce(tf.random_normal(shape=[1]))
-
-    def _build_coco_predictor(self, idx):
-        graph_func = self.trainer.get_predictor(self._in_names, self._out_names, device=idx)
-        return lambda img: detect_one_image(img, graph_func)
-
-    def _before_train(self):
-        num_eval = cfg.TRAIN.NUM_EVALS
-        interval = max(self.trainer.max_epoch // (num_eval + 1), 1)
-        self.epochs_to_eval = set([interval * k for k in range(1, num_eval + 1)])
-        self.epochs_to_eval.add(self.trainer.max_epoch)
-        if len(self.epochs_to_eval) < 15:
-            logger.info("[EvalCallback] Will evaluate at epoch " + str(sorted(self.epochs_to_eval)))
-        else:
-            logger.info("[EvalCallback] Will evaluate every {} epochs".format(interval))
-
-    def _eval(self):
-        logdir = args.logdir
-        if cfg.TRAINER == 'replicated':
-            with ThreadPoolExecutor(max_workers=self.num_predictor) as executor, \
-                    tqdm.tqdm(total=sum([df.size() for df in self.dataflows])) as pbar:
-                futures = []
-                for dataflow, pred in zip(self.dataflows, self.predictors):
-                    futures.append(executor.submit(eval_coco, dataflow, pred, pbar))
-                all_results = list(itertools.chain(*[fut.result() for fut in futures]))
-        else:
-            if self._horovod_run_eval:
-                local_results = eval_coco(self.dataflow, self.predictor)
-                output_partial = os.path.join(
-                    logdir, 'outputs{}-part{}.json'.format(self.global_step, hvd.local_rank()))
-                with open(output_partial, 'w') as f:
-                    json.dump(local_results, f)
-            self.barrier.eval()
-            if hvd.rank() > 0:
-                return
-            all_results = []
-            for k in range(hvd.local_size()):
-                output_partial = os.path.join(
-                    logdir, 'outputs{}-part{}.json'.format(self.global_step, k))
-                with open(output_partial, 'r') as f:
-                    obj = json.load(f)
-                all_results.extend(obj)
-                os.unlink(output_partial)
-
-        output_file = os.path.join(
-            logdir, 'outputs{}.json'.format(self.global_step))
-        with open(output_file, 'w') as f:
-            json.dump(all_results, f)
-        try:
-            scores = print_evaluation_scores(output_file)
-            for k, v in scores.items():
-                self.trainer.monitors.put_scalar(k, v)
-        except Exception:
-            logger.exception("Exception in COCO evaluation.")
-
-    def _trigger_epoch(self):
-        if self.epoch_num in self.epochs_to_eval:
-            logger.info("Running evaluation ...")
-            self._eval()
 
 
 if __name__ == '__main__':
@@ -327,7 +207,7 @@ if __name__ == '__main__':
     logger.info("LR Schedule (epochs, value): " + str(lr_schedule))
     # train_dataflow = get_train_dataflow()   # get the coco datasets
 
-    train_attrs_dataflow = get_attributes_dataflow(True)  # get the wider datasets
+    train_attrs_dataflow = get_attributes_dataflow()  # get the wider datasets
     # This is what's commonly referred to as "epochs"
     total_passes = cfg.TRAIN.LR_SCHEDULE[-1] * factor / train_attrs_dataflow.size()
     logger.info("Total passes of the training set is: {}".format(total_passes))
@@ -339,7 +219,6 @@ if __name__ == '__main__':
         ScheduledHyperParamSetter(
             'learning_rate', warmup_schedule, interp='linear', step_based=True),
         ScheduledHyperParamSetter('learning_rate', lr_schedule),
-        # EvalCallback(*MODEL.get_inference_tensor_names()),
         PeakMemoryTracker(),
         EstimatedTimeLeft(median=True),
         SessionRunTimeout(60000).set_chief_only(True),  # 1 minute timeout
