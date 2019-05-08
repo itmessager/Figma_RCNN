@@ -408,7 +408,17 @@ def get_attributes_dataflow(augment=False):
     logger.info("loading wider attributes dataset...")
     roidbs_train = load_many('/root/datasets/WiderAttribute', 'train', augment)
     roidbs_val = load_many('/root/datasets/WiderAttribute', 'val', augment)
-    roidbs = roidbs_train + roidbs_val
+    roidbs_wider = roidbs_train + roidbs_val
+
+    def attr_augment(names, multiple):
+        datalist = []
+        for name in names:
+            datalist += [roidb for roidb in roidbs_wider if np.sum(roidb[name] == 1) > 0]
+        return datalist * multiple
+
+    attr_names = ['sunglass', 'stripe', 'facemask', 'jeans']
+    roidbs_wider += attr_augment(attr_names, 2)
+
     logger.info("load finished!")
     """
     To train on your own data, change this to your loader.
@@ -426,7 +436,7 @@ def get_attributes_dataflow(augment=False):
     # logger.info("Filtered {} images which contain no non-crowd groudtruth boxes. Total #images for training: {}".format(
     #    num - len(roidbs), len(roidbs)))
 
-    ds = DataFromList(roidbs, shuffle=True)
+    ds = DataFromList(roidbs_wider, shuffle=True)
 
     aug = imgaug.AugmentorList(
         [CustomResize(cfg.PREPROC.TRAIN_SHORT_EDGE_SIZE, cfg.PREPROC.MAX_SIZE),
