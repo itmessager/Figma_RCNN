@@ -389,7 +389,7 @@ def get_train_dataflow():
 
 
 # read wider attribute dataset
-def get_attributes_dataflow(augment=False):
+def get_attributes_dataflow(augment=False, two_cls=False):
     """
     Return a training dataflow. Each datapoint consists of the following:
 
@@ -406,8 +406,8 @@ def get_attributes_dataflow(augment=False):
     """
     # roidbs = load_many(cfg.DATA.BASEDIR, cfg.DATA.TRAIN)
     logger.info("loading wider attributes dataset...")
-    roidbs_train = load_many('/root/datasets/WiderAttribute', 'train', augment)
-    roidbs_val = load_many('/root/datasets/WiderAttribute', 'val', augment)
+    roidbs_train = load_many('/root/datasets/WiderAttribute', 'train', augment, two_cls)
+    roidbs_val = load_many('/root/datasets/WiderAttribute', 'val', augment, two_cls)
     roidbs_wider = roidbs_train + roidbs_val
 
     def attr_augment(names, multiple):

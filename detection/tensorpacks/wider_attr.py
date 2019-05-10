@@ -10,7 +10,7 @@ import json
 import numpy as np
 
 
-def make_dataset(root, subset):
+def make_dataset(root, subset, two_cls):
     assert subset in ['train', 'val', 'test']
 
     data = []
@@ -46,18 +46,27 @@ def make_dataset(root, subset):
                 sample['bbox'] = person['bbox']
                 for i, attr in enumerate(attr_names):
                     sample[attr] = int(person['attribute'][i])
-                    if person['attribute'][i] != 1:
+
+                    # -1 => 0  1=> 1  0=>-1
+                    if two_cls:
+                        # -1 => 0  1=> 1  0=>0
+                        if person['attribute'][i] == -1:
+                            sample[attr] = person['attribute'][i] + 1
+                    else:
                         # -1 => 0  1=> 1  0=>-1
-                        sample[attr] = np.abs(person['attribute'][i]) - 1
+                        if person['attribute'][i] != 1:
+                            sample[attr] = np.abs(person['attribute'][i]) - 1
                 data.append(sample)
                 a += 1
     return data
 
 
-def load_many(basedir, names, is_augment=False):
+def load_many(basedir, names, is_augment=False, two_cls=False):
+    # if two_cls is true,unspecified regard as negative ,-1 => -1  1=> 1  0=>-1
+
     attr_names = ['male', 'longhair', 'sunglass', 'hat', 'tshirt', 'longsleeve', 'formal', 'shorts', 'jeans',
                   'longpants','skirt', 'facemask', 'logo', 'stripe']
-    train_data_list = make_dataset(basedir, names)
+    train_data_list = make_dataset(basedir, names, two_cls)
     # a list contain  16 attributes of each roi
     img_attr_dict = {}
     # get a dictionary that contain 16 attributes of each roi of each image, the key is the image name
@@ -103,7 +112,7 @@ def load_many(basedir, names, is_augment=False):
 def attr_augment(attribute):
     attribute_aug = attribute
     for attr in attribute:
-        attr_aug = np.tile(attr, 5)
+        attr_aug = np.tile(attr, 2)
         attribute_aug = np.concatenate((attribute_aug, attr_aug), axis=0)
     return attribute_aug
 
@@ -119,6 +128,7 @@ def box_augment(bboxes):
 
 
 if __name__ == '__main__':
-    roidbs = load_many('/root/datasets/WiderAttribute', 'train', False)
+    roidbs = load_many('/root/datasets/WiderAttribute', 'train', False, True)
+    roidbs2 = load_many('/root/datasets/WiderAttribute', 'train', False, False)
     #bbb = box_augment(roidb['bbox'])
     print("OK")

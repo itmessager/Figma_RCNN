@@ -127,7 +127,7 @@ def attrs_head(name, feature):
 
         return attrs_logits
 
-
+# # conv-->512-->128-->2
 # def attr_output(name, feature):
 #     with argscope([Conv2D], data_format='channels_first',
 #                   kernel_initializer=tf.variance_scaling_initializer(

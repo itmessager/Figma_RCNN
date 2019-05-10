@@ -150,15 +150,12 @@ class ResNetC4Model(DetectionModel):
             decoded_boxes, label_scores, name_scope='output')
 
         # attributes branch
+
         feature_attributes = resnet_conv5_attr(roi_resized, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
         feature_attrs_gap = GlobalAvgPooling('gap', feature_attributes, data_format='channels_first')
-        add_conv = False
-        if add_conv:
-            attrs_logits = attrs_head('attrs', feature_attributes)
-        else:
-            attrs_logits = attrs_head('attrs', feature_attrs_gap)
-        attrs_loss = all_attrs_losses(inputs, attrs_logits, attr_losses_v2)
 
+        attrs_logits = attrs_head('attrs', feature_attrs_gap)
+        attrs_loss = all_attrs_losses(inputs, attrs_logits, attr_losses_v2)
         all_losses = [attrs_loss]
         # male loss
         wd_cost = regularize_cost(
@@ -207,7 +204,7 @@ if __name__ == '__main__':
     logger.info("LR Schedule (epochs, value): " + str(lr_schedule))
     # train_dataflow = get_train_dataflow()   # get the coco datasets
 
-    train_attrs_dataflow = get_attributes_dataflow()  # get the wider datasets
+    train_attrs_dataflow = get_attributes_dataflow(False, True)  # get the wider datasets
     # This is what's commonly referred to as "epochs"
     total_passes = cfg.TRAIN.LR_SCHEDULE[-1] * factor / train_attrs_dataflow.size()
     logger.info("Total passes of the training set is: {}".format(total_passes))
