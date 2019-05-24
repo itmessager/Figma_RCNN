@@ -127,29 +127,29 @@ def attrs_head(name, feature):
         return attrs_logits
 
 
-def attr_output(name, feature):
-    with argscope([Conv2D], data_format='channels_first',
-                  kernel_initializer=tf.variance_scaling_initializer(
-                      scale=2.0, mode='fan_out', distribution='normal')):
-        feature_attributes = Conv2D('conv_{}'.format(name), feature, 512, 3, activation=tf.nn.relu)
-
-    feature_gap_ = GlobalAvgPooling('gap', feature_attributes, data_format='channels_first')
-
-    hidden = FullyConnected('{}_hidden'.format(name), feature_gap_, 128, activation=tf.nn.relu,
-                            kernel_initializer=tf.random_normal_initializer(stddev=0.01))
-    attr = FullyConnected(
-        name, hidden, 2,
-        kernel_initializer=tf.random_normal_initializer(stddev=0.01))
-    return attr
-
-# 2048-->512-->2
 # def attr_output(name, feature):
-#     hidden = FullyConnected('{}_hidden'.format(name), feature, 512, activation=tf.nn.relu,
+#     with argscope([Conv2D], data_format='channels_first',
+#                   kernel_initializer=tf.variance_scaling_initializer(
+#                       scale=2.0, mode='fan_out', distribution='normal')):
+#         feature_attributes = Conv2D('conv_{}'.format(name), feature, 512, 3, activation=tf.nn.relu)
+#
+#     feature_gap_ = GlobalAvgPooling('gap', feature_attributes, data_format='channels_first')
+#
+#     hidden = FullyConnected('{}_hidden'.format(name), feature_gap_, 128, activation=tf.nn.relu,
 #                             kernel_initializer=tf.random_normal_initializer(stddev=0.01))
 #     attr = FullyConnected(
 #         name, hidden, 2,
 #         kernel_initializer=tf.random_normal_initializer(stddev=0.01))
 #     return attr
+
+# 2048-->512-->2
+def attr_output(name, feature):
+    hidden = FullyConnected('{}_hidden'.format(name), feature, 512, activation=tf.nn.relu,
+                            kernel_initializer=tf.random_normal_initializer(stddev=0.01))
+    attr = FullyConnected(
+        name, hidden, 2,
+        kernel_initializer=tf.random_normal_initializer(stddev=0.01))
+    return attr
 
 
 def attrs_predict(feature, predict=None):

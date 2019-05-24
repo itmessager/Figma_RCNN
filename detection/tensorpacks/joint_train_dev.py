@@ -192,9 +192,8 @@ class ResNetC4Model(DetectionModel):
         boxes_on_featuremap_ = gt_boxes * (1.0 / cfg.RPN.ANCHOR_STRIDE)  # ANCHOR_STRIDE = 16
         roi_resized_ = roi_align(featuremap, boxes_on_featuremap_, 14)
         feature_attributes = resnet_conv5(roi_resized_, cfg.BACKBONE.RESNET_NUM_BLOCK[-1])
-
-
-        attrs_logits = attrs_head('attrs', feature_attributes)
+        feature_gap_ = GlobalAvgPooling('gap', feature_attributes, data_format='channels_first')
+        attrs_logits = attrs_head('attrs', feature_gap_)
 
         if is_training:
             # attributes loss
@@ -223,7 +222,7 @@ class ResNetC4Model(DetectionModel):
 
             person_slice = tf.where(final_labels <= 1)
             person_labels = tf.gather(final_labels, person_slice)
-            final_person_labels = tf.reshape(person_labels, (-1,), name='person_labels')
+            tf.reshape(person_labels, (-1,), name='person_labels')
 
             person_boxes = tf.gather(final_boxes, person_slice)
             final_person_boxes = tf.reshape(person_boxes, (-1, 4), name='person_boxes')
@@ -665,13 +664,13 @@ FRCNN.BATCH_PER_IM=64
 PREPROC.SHORT_EDGE_SIZE=600
 PREPROC.MAX_SIZE=1024
 TRAIN.LR_SCHEDULE=[150000,230000,280000]
-BACKBONE.WEIGHTS=/home/ds/dev/datasets/COCO-R50C4-MaskRCNN-Standard.npz
+BACKBONE.WEIGHTS=/home/ds/dev/datasets/ImageNet-R50-AlignPadding.npz
 DATA.BASEDIR=/home/ds/dev/datasets/COCO/DIR/
 WIDER.BASEDIR=/home/ds/dev/datasets/WiderAttribute/
 
 
 --config
-BACKBONE.WEIGHTS=/root/datasets/COCO-R50C4-MaskRCNN-Standard.npz
+BACKBONE.WEIGHTS=/root/datasets/ImageNet-R50-AlignPadding.npz
 DATA.BASEDIR=/root/datasets/COCO/DIR/
 WIDER.BASEDIR=/root/datasets/WiderAttribute/
 '''

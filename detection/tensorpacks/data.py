@@ -328,7 +328,7 @@ def get_coco_wider_dataflow(augment):
     # Valid training images should have at least one fg box.
     # But this filter shall not be applied for testing.
 
-    roidbs_wider = list(filter(lambda img: len(img['bbox']) > 0, roidbs_wider * 5))
+    roidbs_wider = list(filter(lambda img: len(img['bbox']) > 0, roidbs_wider))
     roidbs_coco = list(filter(lambda img: len(img['boxes'][img['is_crowd'] == 0]) > 0, roidbs_coco))
     roidbs = roidbs_wider + roidbs_coco
     random.shuffle(roidbs)
