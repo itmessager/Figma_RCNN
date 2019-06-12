@@ -321,10 +321,10 @@ def attr_losses_v2(attr_name, labels, logits):
         labels: n,[-1,0,1,1,0]
         logits: nx2 [(0.4,0.6),(0.72,0.28),(0.84,0.16),(0.17,0.83),(0.49,0.51)]
     Returns:
-        loss_sum:contain specific_loss and attr_loss
+        loss_sum: only contain attr_loss(filter out the unspecific attributes)
     """
-    # the first num of logits is to determine whether the attribute is identifiable
 
+    # filter the positive and negative samples
     valid_inds = tf.where(labels >= 0)
     valid_labels = tf.reshape(tf.gather(labels, valid_inds), [-1])
     valid_logits = tf.reshape(tf.gather(logits, valid_inds), (-1, 2))

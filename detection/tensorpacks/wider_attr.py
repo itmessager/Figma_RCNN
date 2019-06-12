@@ -118,7 +118,21 @@ def box_augment(bboxes):
     return bboxes_aug
 
 
+def compute_cov(basedir):
+    attr_names = ['male', 'longhair', 'sunglass', 'hat', 'tshirt', 'longsleeve', 'formal', 'shorts',
+                  'jeans', 'longpants', 'skirt', 'facemask', 'logo', 'stripe']
+    names = ['train', 'test', 'val']
+    train_data_list = []
+    for name in names:
+        train_data_list += make_dataset(basedir, name)
+    for attr1 in attr_names:
+        for attr2 in attr_names:
+            p = np.sum([np.sum((td[attr1] == 1) and (td[attr2] == 1)) for td in train_data_list]) / np.sum(
+                [np.sum((td[attr1] == 1)) for td in train_data_list])
+            print(attr2 + " " + attr1 + " " + str(p) + "\n")
+
 if __name__ == '__main__':
     roidbs = load_many('/root/datasets/WiderAttribute', 'train', False)
     #bbb = box_augment(roidb['bbox'])
+    #compute_cov('/root/datasets/WiderAttribute')
     print("OK")
