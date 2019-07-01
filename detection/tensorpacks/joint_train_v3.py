@@ -38,7 +38,7 @@ from detection.tensorpacks import model_frcnn
 from detection.tensorpacks import model_mrcnn
 from detection.tensorpacks.model_frcnn import (
     sample_fast_rcnn_targets, fastrcnn_outputs, fastrcnn_predictions, BoxProposals, FastRCNNHead, attrs_head,
-    attrs_predict, all_attrs_losses, attr_losses,
+    attrs_predict, all_attrs_losses, attr_losses, all_cor_cost,
     attr_losses_v2, logits_to_predict)
 from detection.tensorpacks.model_mrcnn import maskrcnn_upXconv_head, maskrcnn_loss
 from detection.tensorpacks.model_rpn import rpn_head, rpn_losses, generate_rpn_proposals
@@ -198,7 +198,10 @@ class ResNetC4Model(DetectionModel):
         if is_training:
             # attributes loss
             attrs_losses = all_attrs_losses(inputs, attrs_logits, attr_losses_v2)
-            all_losses = [attrs_losses]
+            cor_cost = tf.identity(all_cor_cost(attrs_logits), 'cor_cost')
+            all_losses = [attrs_losses, cor_cost]
+
+
             # rpn loss  = label_loss, box_loss
             all_losses.extend(rpn_losses(
                 anchors.gt_labels, anchors.encoded_gt_boxes(), rpn_label_logits, rpn_box_logits))
@@ -211,7 +214,7 @@ class ResNetC4Model(DetectionModel):
             all_losses.append(wd_cost)
 
             total_cost = tf.add_n(all_losses, 'total_cost')
-            add_moving_summary(total_cost, wd_cost)
+            add_moving_summary(total_cost, wd_cost, cor_cost)
             return total_cost
         else:
             decoded_boxes = fastrcnn_head.decoded_output_boxes() # pre_boxes_on_images

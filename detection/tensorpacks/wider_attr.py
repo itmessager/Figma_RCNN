@@ -118,6 +118,18 @@ def box_augment(bboxes):
     return bboxes_aug
 
 
+def is_specified(td):
+    attr_names = ['male', 'longhair', 'sunglass', 'hat', 'tshirt', 'longsleeve', 'formal', 'shorts',
+                  'jeans', 'longpants', 'skirt', 'facemask', 'logo', 'stripe']
+    flag=0
+    for attr in attr_names:
+        if td[attr] == -1:
+            flag = 1
+    if flag == 0:
+        return True
+    else:
+        return False
+
 def compute_cov(basedir):
     attr_names = ['male', 'longhair', 'sunglass', 'hat', 'tshirt', 'longsleeve', 'formal', 'shorts',
                   'jeans', 'longpants', 'skirt', 'facemask', 'logo', 'stripe']
@@ -125,14 +137,30 @@ def compute_cov(basedir):
     train_data_list = []
     for name in names:
         train_data_list += make_dataset(basedir, name)
+        train_data_list = [td for td in train_data_list if is_specified(td)]
+
     for attr1 in attr_names:
         for attr2 in attr_names:
-            p = np.sum([np.sum((td[attr1] == 1) and (td[attr2] == 1)) for td in train_data_list]) / np.sum(
+            p0 = np.sum([np.sum((td[attr1] == 1) and (td[attr2] == 1)) for td in train_data_list]) / np.sum(
                 [np.sum((td[attr1] == 1)) for td in train_data_list])
-            print(attr2 + " " + attr1 + " " + str(p) + "\n")
+
+            num_11_in_1X = (np.sum([(td[attr2] == 1) for td in train_data_list])/np.sum([(td[attr2] == 1 or td[attr2] == 0) for td in train_data_list])) \
+                           * np.sum([(td[attr1] == 1) and (td[attr2] == -1) for td in train_data_list])
+            num_1_in_X = (np.sum([(td[attr2] == 1) for td in train_data_list]) / np.sum([(td[attr2] == 1 or td[attr2] == 0) for td in train_data_list])) \
+                           * np.sum([(td[attr2] == -1) for td in train_data_list])
+
+            p = (np.sum([(td[attr1] == 1) and (td[attr2] == 1) for td in train_data_list])+num_11_in_1X) / np.sum(
+                [(td[attr1] == 1) for td in train_data_list])
+            q = (np.sum([(td[attr2] == 1) for td in train_data_list])+num_1_in_X)/len(train_data_list)
+
+            print(attr2 + " " + attr1 + "   " + str(p0) + "   " + str(p) +"   " + str(p/q)+"\n")
 
 if __name__ == '__main__':
     roidbs = load_many('/root/datasets/WiderAttribute', 'train', False)
     #bbb = box_augment(roidb['bbox'])
-    #compute_cov('/root/datasets/WiderAttribute')
+    compute_cov('/root/datasets/WiderAttribute')
     print("OK")
+
+
+
+

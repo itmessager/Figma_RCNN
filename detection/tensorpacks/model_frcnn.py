@@ -156,7 +156,7 @@ def attrs_predict(feature, predict=None):
     """
     """
     if predict:
-        attrs_logits = [predict(attr_output('male', feature), 'male'),
+        attrs_predict = [predict(attr_output('male', feature), 'male'),
                         predict(attr_output('longhair', feature), 'longhair'),
                         predict(attr_output('sunglass', feature), 'sunglass'),
                         predict(attr_output('hat', feature), 'hat'),
@@ -171,7 +171,7 @@ def attrs_predict(feature, predict=None):
                         predict(attr_output('stripe', feature), 'stripe'),
                         predict(attr_output('longpants', feature), 'longpants')]
     else:
-        attrs_logits = [tf.nn.softmax(attr_output('male', feature), name='pmale'),
+        attrs_predict = [tf.nn.softmax(attr_output('male', feature), name='pmale'),
                         tf.nn.softmax(attr_output('longhair', feature), name='plonghair'),
                         tf.nn.softmax(attr_output('sunglass', feature), name='psunglass'),
                         tf.nn.softmax(attr_output('hat', feature), name='phat'),
@@ -185,7 +185,7 @@ def attrs_predict(feature, predict=None):
                         tf.nn.softmax(attr_output('logo', feature), name='plogo'),
                         tf.nn.softmax(attr_output('stripe', feature), name='pstripe'),
                         tf.nn.softmax(attr_output('longpants', feature), name='plongpants')]
-    return attrs_logits
+    return attrs_predict
 
 
 def logits_to_predict(attr_logits, name=None):
@@ -253,6 +253,41 @@ def all_attrs_losses(attr_labels, attr_logits,loss_function):
                   loss_function('longpants', attr_labels['longpants'], attr_logits['longpants'])]
     attrs_loss = tf.add_n(attrs_loss)
     return attrs_loss
+
+
+def all_cor_cost(attr_logits):
+    """
+    Args:
+        :param attr_logits: n,
+    Returns:
+        label_loss, box_loss
+    """
+
+    def correlation(name1, name2, f, k=10):
+        vector = f(tf.nn.softmax(attr_logits[name1])[:, 1],
+                   tf.nn.softmax(attr_logits[name2])[:, 1], k)
+        return tf.reduce_sum(vector)
+
+    cor_cost = [correlation('male', 'skirt', f3),
+                correlation('longsleeve', 'shorts', f3),
+                correlation('formal', 'longpants', f2),
+                correlation('tshirt', 'shorts', f1),
+                correlation('longpants', 'skirt', f3),
+                correlation('formal', 'shorts', f3)]
+    cor_cost = tf.add_n(cor_cost)
+    return cor_cost
+
+
+def f1(a1, a2, k):
+    return tf.pow(a1 - a2, k)
+
+
+def f2(a1, a2, k):
+    return tf.exp(-k * (tf.pow(a1 - 1, 2) + tf.pow(a2, 2)))
+
+
+def f3(a1, a2, k):
+    return tf.exp(-k * (tf.pow(a1 - 1, 2) + tf.pow(a2 - 1, 2)))
 
 
 def attr_losses(attr_name, labels, logits):

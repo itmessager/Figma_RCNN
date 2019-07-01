@@ -411,6 +411,7 @@ def get_coco_wider_dataflow(augment):
         else:  # Wider datasets
             fname = roidb['img']
             x1, y1, w, h = np.split(roidb['bbox'], 4, axis=1)
+            # x1 = y1 = w = h = np.array([[0.0], [0.0]],dtype=np.float32)
             boxes = np.concatenate([x1, y1, x1 + w, y1 + h], axis=1)
             boxes = np.copy(boxes)
             im = cv2.imread(fname, cv2.IMREAD_COLOR)
