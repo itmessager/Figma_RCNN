@@ -94,9 +94,9 @@ if __name__ == "__main__":
 '''
 --image
 /root/datasets/img-folder/1.jpg
---obj_ckpt
+--load_ckpt
 /root/datasets/0317/checkpoint
---obj_config
+--config
 DATA.BASEDIR=/root/datasets/COCO/DIR
 
 '''
