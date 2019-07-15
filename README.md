@@ -84,33 +84,35 @@ The trained models can be downloaded in the [Baidu Cloud] (Waiting upload).
 
 ## Results
 
-The models' detection branch are trained on COCO trainval35k and evaluated on COCO minival2014 using mAP@IoU=0.50:0.95. attributes branch are trained on Wider trainval and evaluated on Wider test using mAP.
+The models' detection branch are trained on COCO trainval35k and evaluated on COCO minival2014 using mAP@IoU=0.50:0.95. attributes branch are trained on Wider Attribute trainval and evaluated on Wider Attribute test using mAP.
 The models are fine-tuned from ResNet pre-trained R50C4 models in
 [tensorpack model zoo](http://models.tensorpack.com/FasterRCNN/)
 
 Performance in [Person Detection](https://github.com/facebookresearch/Detectron/) can
 be approximately reproduced.
 
-    | Backbone  | mAP (box;mask) | Detectron mAP (box;mask) |Configurations                                               |
-    | R50-C4    | 38.2;33.3      | 37.8;32.8                |`MODE_MASK=True` `TRAIN.LR_SCHEDULE=[2000, 240000, 280000]`  |
+    | Backbone  | mAP (box) | Detectron mAP (box) |Configurations                            |
+    | R50-C4    | 33.3      | 32.8                |TRAIN.LR_SCHEDULE=[120000, 240000, 280000]|
 
 Performance in [Person Attributes Recognition](http://mmlab.ie.cuhk.edu.hk/projects/WIDERAttribute.html) can
 be approximately reproduced.
    
-    |      Atrributes   | AP (positive/negative)    |    mAcc(positive/negative/unsure)     | 
-    |        male       |        0.892              |          0.72146                      |
-    |      longhair     |        0.871              |          0.7192                       |
-    |      sunglass     |        0.882              |          0.632                        |
-    |        hat        |        0.899              |          0.63477                      |
-    |       tshirt      |        0.887              |          0.69904                      |
-    |     longsleeve    |        0.919              |          0.7272                       |
-    |       formal      |        0.932              |          0.6529                       |
-    |       shorts      |        0.915              |          0.79589                      |
-    |     longpants     |        0.871              |          0.90172                      |
-    |       skirt       |        0.915              |          0.82129                      |
-    |     facemask      |        0.943              |          0.70449                      |
-    |       logo        |        0.886              |          0.63651                      |
-    |      stripe       |        0.931              |          0.62751                      |
+    |      Atrributes   | AP (positive/negative)     |
+    |        male       |        0.9503              |
+    |      longhair     |        0.8598              |
+    |      sunglass     |        0.7342              |
+    |        hat        |        0.9477              |
+    |       tshirt      |        0.7892              |
+    |     longsleeve    |        0.9602              |
+    |       formal      |        0.8084              |
+    |       shorts      |        0.9105              |
+    |       jeans       |        0.7461              |
+    |     longpants     |        0.9711              |
+    |       skirt       |        0.8454              |
+    |     facemask      |        0.7372              |
+    |       logo        |        0.8912              |
+    |      stripe       |        0.6159              |
+    |        mAP        |        0.8405              |
  
 ## Some examples
 
