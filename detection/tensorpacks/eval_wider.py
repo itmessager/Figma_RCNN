@@ -232,6 +232,7 @@ def eval_W(df, eval_one_image, tqdm_bar=None):
     return all_results
 
 
+# WIDER test sets are used by default
 def offline_evaluate(pred_func, output_file):
     datasets, df = get_wider_eval_dataflow()
     all_results = eval_W(
@@ -414,5 +415,5 @@ FRCNN.BATCH_PER_IM=64
 PREPROC.SHORT_EDGE_SIZE=600
 PREPROC.MAX_SIZE=1024
 --load
-/root/datasets/0317/checkpoint
+/root/datasets/0509/checkpoint
 '''

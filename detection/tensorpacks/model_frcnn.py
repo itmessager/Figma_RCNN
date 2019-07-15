@@ -607,15 +607,27 @@ class FastRCNNHead(object):
         self._bbox_class_agnostic = int(box_logits.shape[1]) == 1
 
     @memoized
+    # def decoded_output_boxes(self):
+    #     """ Returns: N x #class x 4 """
+    #     anchors = tf.tile(tf.expand_dims(self.proposals, 1),
+    #                       [1, cfg.DATA.NUM_CLASS, 1])  # N x #class x 4
+    #     decoded_boxes = decode_bbox_target(
+    #         self.box_logits / self.bbox_regression_weights,  # [10., 10., 5., 5.]
+    #         anchors
+    #     )
+    #     return decoded_boxes  # pre_boxes_on_images
+
+    @memoized
     def decoded_output_boxes(self):
         """ Returns: N x #class x 4 """
-        anchors = tf.tile(tf.expand_dims(self.proposals, 1),
-                          [1, cfg.DATA.NUM_CLASS, 1])  # N x #class x 4
+        anchors = tf.tile(tf.expand_dims(self.proposals.boxes, 1),
+                          [1, cfg.DATA.NUM_CLASS, 1])   # N x #class x 4
         decoded_boxes = decode_bbox_target(
-            self.box_logits / self.bbox_regression_weights,  # [10., 10., 5., 5.]
+            self.box_logits / self.bbox_regression_weights,
             anchors
         )
-        return decoded_boxes  # pre_boxes_on_images
+        return decoded_boxes
+
     @memoized
     def output_scores(self, name=None):
         """ Returns: N x #class scores, summed to one for each box."""

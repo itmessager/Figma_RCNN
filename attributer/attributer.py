@@ -25,3 +25,4 @@ class PersonBoxes:
         self.body_mask = box.mask
         self.body_score = box.score
         self.id = np.random.randint(1, 20)
+

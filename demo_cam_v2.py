@@ -6,7 +6,7 @@ import argparse
 
 from PIL import ImageDraw, Image
 from attributer.attributer import PersonAttrs, PersonBoxes
-from utils.viz_utils import draw_tracked_people, draw_person_attributes
+from utils.viz_utils_en import draw_tracked_people
 
 
 def run(process_func, args, cam=None, video=None, image=None):
@@ -66,18 +66,18 @@ def process_detector_func(models, image_bgr):
     # Perform detection
     person_results = models.detect(image_bgr, rgb=False)
 
-    # get the people's boxes,masks,scores,id
-    people_boxes = [PersonBoxes(r) for r in person_results]
-    # Calculate people's attributes
-    people_attrs = [PersonAttrs(r) for r in person_results]
+    # # get the people's boxes,masks,scores,id
+    # people_boxes = [PersonBoxes(r) for r in person_results]
+    # # Calculate people's attributes
+    # people_attrs = [PersonAttrs(r) for r in person_results]
     # Draw detection and tracking results
-    image_disp = draw_tracked_people(image_bgr, people_boxes)
+    image_disp = draw_tracked_people(image_bgr, person_results)
 
     # Draw attribute results
     image_pil = Image.fromarray(cv2.cvtColor(image_disp, cv2.COLOR_BGR2RGB))
     draw = ImageDraw.Draw(image_pil)
-    for trk, attr in zip(people_boxes, people_attrs):
-        draw_person_attributes(draw, attr, trk.body_box)
+    # for trk, attr in zip(people_boxes, people_attrs):
+    #     draw_person_attributes(draw, attr, trk.body_box)
 
     image_disp = cv2.cvtColor(np.array(image_pil), cv2.COLOR_RGB2BGR)
 
@@ -124,7 +124,6 @@ if __name__ == "__main__":
     run(process_detector_func, args, args.cam, args.video, args.image)
 
 '''
-
 --image
 /root/datasets/img-folder/1.jpg
 --cam

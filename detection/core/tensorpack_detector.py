@@ -7,6 +7,7 @@ from tensorpack import *
 from detection.tensorpacks.coco import COCODetection
 from detection.config.tensorpack_config import finalize_configs, config as cfg
 from detection.tensorpacks.eval import detect_one_image
+# from detection.tensorpacks.attrs_predict import ResNetC4Model
 from detection.tensorpacks.attrs_predict import ResNetC4Model
 import argparse
 class TensorPackDetector(AbstractDetector):
