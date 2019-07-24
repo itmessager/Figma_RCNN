@@ -293,7 +293,6 @@ def get_coco_wider_dataflow(augment):
 
     #Just keep images that contain persons.
     #roidbs_coco = [roidb for roidb in roidbs_coco if np.sum(roidb['class'] == 1) / len(roidb['class']) >= 1 / 5]
-
     roidbs_wider = load_many(cfg.WIDER.BASEDIR, 'train', augment) + load_many(
         cfg.WIDER.BASEDIR, 'val', augment)
 

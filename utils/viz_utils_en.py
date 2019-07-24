@@ -1,10 +1,8 @@
 import cv2
 from PIL import Image, ImageDraw
 import numpy as np
-from object_detection.utils.visualization_utils import STANDARD_COLORS, draw_mask_on_image_array, \
+from object_detection.utils.visualization_utils import STANDARD_COLORS, \
     draw_bounding_box_on_image_array
-
-from utils.drawing import draw_text_pil, draw_axis
 
 
 def pil_to_cv_image(image_pil, output_bgr=True):
@@ -67,6 +65,16 @@ stripe_text = u"Stripe;  "
 sunglass_text = u"Sunglasses;  "
 tshirt_text = u"T-shirt;  "
 
+
+def label_to_text(label):
+    if label == 1:
+        return male_text
+    elif label == 0:
+        return female_text
+    else:
+        return unspecified_text
+
+
 def draw_tracked_people(img_bgr, tracked_people):
     """
     Draw bounding box and mask of detected and tracked people, each with a different color based on their ids.
@@ -111,29 +119,10 @@ def draw_tracked_people(img_bgr, tracked_people):
         if person.tshirt == 1:
             text += tshirt_text
 
-
-
         if person.box is not None:
             xmin, ymin, xmax, ymax = person.box
             draw_bounding_box_on_image_array(img_rgb, ymin, xmin, ymax, xmax, color=color, thickness=2,
                                              display_str_list=[text[:-3]],
                                              use_normalized_coordinates=False)
-        # if person.face_box is not None:
-        #     xmin, ymin, xmax, ymax = person.face_box
-        #     draw_bounding_box_on_image_array(img_rgb, ymin, xmin, ymax, xmax, color=color, thickness=2,
-        #                                      display_str_list=['Score:{:.2f}'.format(person.face_score)],
-        #                                      use_normalized_coordinates=False)
-        # if person.mask is not None:
-        #     draw_mask_on_image_array(img_rgb, person.mask, color=color)
 
     return cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
-
-
-
-def label_to_text(label):
-    if label == 1:
-        return male_text
-    elif label == 0:
-        return female_text
-    else:
-        return unspecified_text

@@ -21,8 +21,9 @@ _C.MODE_FPN = False
 # dataset -----------------------
 _C.DATA.BASEDIR = ''
 
-_C.DATA.TRAIN = ['train2014', 'valminusminival2014']   # i.e., trainval35k
-_C.DATA.VAL = 'minival2014'   # For now, only support evaluation on single dataset
+_C.DATA.TRAIN = ['train2014', 'valminusminival2014']  # i.e., trainval35k  #
+_C.DATA.VAL = 'val2014'  # 'minival2014'   # For now, only support evaluation on single dataset
+_C.DATA.TEST = 'test2014'
 _C.DATA.NUM_CATEGORY = 80    # 80 categories.
 _C.DATA.CLASS_NAMES = []  # NUM_CLASS (NUM_CATEGORY+1) strings, to be populated later by data loader. The first is BG.
 _C.WIDER.BASEDIR = '/root/datasets/WiderAttribute/'
@@ -80,7 +81,7 @@ _C.RPN.NEGATIVE_ANCHOR_THRESH = 0.3
 _C.RPN.FG_RATIO = 0.5  # fg ratio among selected RPN anchors
 _C.RPN.BATCH_PER_IM = 256  # total (across FPN levels) number of anchors that are marked valid
 _C.RPN.MIN_SIZE = 0
-_C.RPN.PROPOSAL_NMS_THRESH = 0.7
+_C.RPN.PROPOSAL_NMS_THRESH = 0.3
 _C.RPN.CROWD_OVERLAP_THRESH = 0.7  # boxes overlapping crowd will be ignored.
 _C.RPN.HEAD_DIM = 1024      # used in C4 only
 
@@ -127,12 +128,12 @@ _C.CASCADE.IOUS = [0.5, 0.6, 0.7]
 _C.CASCADE.BBOX_REG_WEIGHTS = [[10., 10., 5., 5.], [20., 20., 10., 10.], [30., 30., 15., 15.]]
 
 # testing -----------------------
-_C.TEST.FRCNN_NMS_THRESH = 0.3
+_C.TEST.FRCNN_NMS_THRESH = 0.5   # 0.3
 
 # Smaller threshold value gives significantly better mAP. But we use 0.05 for consistency with Detectron.
 # mAP with 1e-4 threshold can be found at https://github.com/tensorpack/tensorpack/commit/26321ae58120af2568bdbf2269f32aa708d425a8#diff-61085c48abee915b584027e1085e1043  # noqa
 _C.TEST.RESULT_SCORE_THRESH = 0.05
-_C.TEST.RESULT_SCORE_THRESH_VIS = 0.5   # only visualize confident results
+_C.TEST.RESULT_SCORE_THRESH_VIS = 0.8   # only visualize confident results
 _C.TEST.RESULTS_PER_IM = 100
 
 

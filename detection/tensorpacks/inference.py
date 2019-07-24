@@ -4,9 +4,9 @@
 
 import argparse
 import cv2
-import shutil
-import itertools
-import tqdm
+# import shutil
+# import itertools
+# import tqdm
 import numpy as np
 import json
 import six
@@ -39,8 +39,7 @@ from detection.tensorpacks.model_box import (
 
 from detection.tensorpacks.data import get_all_anchors
 from detection.tensorpacks.viz import draw_final_outputs
-from detection.tensorpacks.eval import (
-    eval_coco, detect_one_image, print_evaluation_scores, DetectionResult)
+from detection.tensorpacks.eval import detect_one_image
 from detection.config.config import finalize_configs, config as cfg
 
 
@@ -207,7 +206,6 @@ if __name__ == '__main__':
         assert args.load
         finalize_configs(is_training=False)
 
-        # can't input the dataflow ?
         pred = OfflinePredictor(PredictConfig(
             model=MODEL,  # model
             session_init=get_model_loader(args.load),  # weight
