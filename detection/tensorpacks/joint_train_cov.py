@@ -657,7 +657,6 @@ if __name__ == '__main__':
         launch_train_with_config(traincfg, trainer)
 
 
-
 '''
 
 --config
@@ -666,15 +665,10 @@ FRCNN.BATCH_PER_IM=64
 PREPROC.SHORT_EDGE_SIZE=600
 PREPROC.MAX_SIZE=1024
 TRAIN.LR_SCHEDULE=[150000,230000,280000]
-BACKBONE.WEIGHTS=/home/ds/dev/datasets/ImageNet-R50-AlignPadding.npz
-DATA.BASEDIR=/home/ds/dev/datasets/COCO/DIR/
-WIDER.BASEDIR=/home/ds/dev/datasets/WiderAttribute/
-
-
---config
-BACKBONE.WEIGHTS=/root/datasets/ImageNet-R50-AlignPadding.npz
+BACKBONE.WEIGHTS=/root/datasets/COCO-R50C4-MaskRCNN-Standard.npz
 DATA.BASEDIR=/root/datasets/COCO/DIR/
 WIDER.BASEDIR=/root/datasets/WiderAttribute/
+
 '''
 
 '''

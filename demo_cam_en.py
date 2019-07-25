@@ -106,12 +106,9 @@ if __name__ == "__main__":
 
 '''
 --image
-/root/datasets/img-folder/1.jpg
---cam
-0
+/root/datasets/test_shows/07.jpg
 --load_ckpt
 /root/datasets/0601/checkpoint
 --config
 DATA.BASEDIR=/root/datasets/COCO/DIR
-
 '''
