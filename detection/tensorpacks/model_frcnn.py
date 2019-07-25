@@ -127,21 +127,6 @@ def attrs_head(name, feature):
         return attrs_logits
 
 
-# def attr_output(name, feature):
-#     with argscope([Conv2D], data_format='channels_first',
-#                   kernel_initializer=tf.variance_scaling_initializer(
-#                       scale=2.0, mode='fan_out', distribution='normal')):
-#         feature_attributes = Conv2D('conv_{}'.format(name), feature, 512, 3, activation=tf.nn.relu)
-#
-#     feature_gap_ = GlobalAvgPooling('gap', feature_attributes, data_format='channels_first')
-#
-#     hidden = FullyConnected('{}_hidden'.format(name), feature_gap_, 128, activation=tf.nn.relu,
-#                             kernel_initializer=tf.random_normal_initializer(stddev=0.01))
-#     attr = FullyConnected(
-#         name, hidden, 2,
-#         kernel_initializer=tf.random_normal_initializer(stddev=0.01))
-#     return attr
-
 # 2048-->512-->2
 def attr_output(name, feature):
     hidden = FullyConnected('{}_hidden'.format(name), feature, 512, activation=tf.nn.relu,
@@ -157,34 +142,34 @@ def attrs_predict(feature, predict=None):
     """
     if predict:
         attrs_predict = [predict(attr_output('male', feature), 'male'),
-                        predict(attr_output('longhair', feature), 'longhair'),
-                        predict(attr_output('sunglass', feature), 'sunglass'),
-                        predict(attr_output('hat', feature), 'hat'),
-                        predict(attr_output('tshirt', feature), 'tshirt'),
-                        predict(attr_output('longsleeve', feature), 'longsleeve'),
-                        predict(attr_output('formal', feature), 'formal'),
-                        predict(attr_output('shorts', feature), 'shorts'),
-                        predict(attr_output('jeans', feature), 'jeans'),
-                        predict(attr_output('skirt', feature), 'skirt'),
-                        predict(attr_output('facemask', feature), 'facemask'),
-                        predict(attr_output('logo', feature), 'logo'),
-                        predict(attr_output('stripe', feature), 'stripe'),
-                        predict(attr_output('longpants', feature), 'longpants')]
+                         predict(attr_output('longhair', feature), 'longhair'),
+                         predict(attr_output('sunglass', feature), 'sunglass'),
+                         predict(attr_output('hat', feature), 'hat'),
+                         predict(attr_output('tshirt', feature), 'tshirt'),
+                         predict(attr_output('longsleeve', feature), 'longsleeve'),
+                         predict(attr_output('formal', feature), 'formal'),
+                         predict(attr_output('shorts', feature), 'shorts'),
+                         predict(attr_output('jeans', feature), 'jeans'),
+                         predict(attr_output('skirt', feature), 'skirt'),
+                         predict(attr_output('facemask', feature), 'facemask'),
+                         predict(attr_output('logo', feature), 'logo'),
+                         predict(attr_output('stripe', feature), 'stripe'),
+                         predict(attr_output('longpants', feature), 'longpants')]
     else:
         attrs_predict = [tf.nn.softmax(attr_output('male', feature), name='pmale'),
-                        tf.nn.softmax(attr_output('longhair', feature), name='plonghair'),
-                        tf.nn.softmax(attr_output('sunglass', feature), name='psunglass'),
-                        tf.nn.softmax(attr_output('hat', feature), name='phat'),
-                        tf.nn.softmax(attr_output('tshirt', feature), name='ptshirt'),
-                        tf.nn.softmax(attr_output('longsleeve', feature), name='plongsleeve'),
-                        tf.nn.softmax(attr_output('formal', feature), name='pformal'),
-                        tf.nn.softmax(attr_output('shorts', feature), name='pshorts'),
-                        tf.nn.softmax(attr_output('jeans', feature), name='pjeans'),
-                        tf.nn.softmax(attr_output('skirt', feature), name='pskirt'),
-                        tf.nn.softmax(attr_output('facemask', feature), name='pfacemask'),
-                        tf.nn.softmax(attr_output('logo', feature), name='plogo'),
-                        tf.nn.softmax(attr_output('stripe', feature), name='pstripe'),
-                        tf.nn.softmax(attr_output('longpants', feature), name='plongpants')]
+                         tf.nn.softmax(attr_output('longhair', feature), name='plonghair'),
+                         tf.nn.softmax(attr_output('sunglass', feature), name='psunglass'),
+                         tf.nn.softmax(attr_output('hat', feature), name='phat'),
+                         tf.nn.softmax(attr_output('tshirt', feature), name='ptshirt'),
+                         tf.nn.softmax(attr_output('longsleeve', feature), name='plongsleeve'),
+                         tf.nn.softmax(attr_output('formal', feature), name='pformal'),
+                         tf.nn.softmax(attr_output('shorts', feature), name='pshorts'),
+                         tf.nn.softmax(attr_output('jeans', feature), name='pjeans'),
+                         tf.nn.softmax(attr_output('skirt', feature), name='pskirt'),
+                         tf.nn.softmax(attr_output('facemask', feature), name='pfacemask'),
+                         tf.nn.softmax(attr_output('logo', feature), name='plogo'),
+                         tf.nn.softmax(attr_output('stripe', feature), name='pstripe'),
+                         tf.nn.softmax(attr_output('longpants', feature), name='plongpants')]
     return attrs_predict
 
 
@@ -197,8 +182,8 @@ def logits_to_predict(attr_logits, name=None):
         predict_label nx1 [-1,1,0,-1,-1] int64
 
     """
-    specific_logits = attr_logits[:, 0]    # 1 means sure    0 means not sure
-    attribute_logits = attr_logits[:, 1]   # 1 means Yes     0 means No
+    specific_logits = attr_logits[:, 0]  # 1 means sure    0 means not sure
+    attribute_logits = attr_logits[:, 1]  # 1 means Yes     0 means No
 
     prediction = tf.where(attribute_logits > 0.5, tf.ones_like(attribute_logits), tf.zeros_like(attribute_logits))
     prediction = tf.where(specific_logits < 0.5, -tf.ones_like(prediction), prediction)
@@ -228,8 +213,7 @@ def logits_to_predict_v2(attr_logits, name=None):
         return predict_label
 
 
-
-def all_attrs_losses(attr_labels, attr_logits,loss_function):
+def all_attrs_losses(attr_labels, attr_logits, loss_function):
     """
     Args:
         :param attr_logits: n,
@@ -260,13 +244,22 @@ def all_cor_cost(attr_logits):
     Args:
         :param attr_logits: n,
     Returns:
-        label_loss, box_loss
+        cor_cost
     """
 
     def correlation(name1, name2, f, k=10):
         vector = f(tf.nn.softmax(attr_logits[name1])[:, 1],
                    tf.nn.softmax(attr_logits[name2])[:, 1], k)
         return tf.reduce_sum(vector)
+
+    def f1(a1, a2, k):
+        return tf.pow(a1 - a2, k)
+
+    def f2(a1, a2, k):
+        return tf.exp(-k * (tf.pow(a1 - 1, 2) + tf.pow(a2, 2)))
+
+    def f3(a1, a2, k):
+        return tf.exp(-k * (tf.pow(a1 - 1, 2) + tf.pow(a2 - 1, 2)))
 
     cor_cost = [correlation('male', 'skirt', f3),
                 correlation('longsleeve', 'shorts', f3),
@@ -277,17 +270,6 @@ def all_cor_cost(attr_logits):
     cor_cost = tf.add_n(cor_cost)
     return cor_cost
 
-
-def f1(a1, a2, k):
-    return tf.pow(a1 - a2, k)
-
-
-def f2(a1, a2, k):
-    return tf.exp(-k * (tf.pow(a1 - 1, 2) + tf.pow(a2, 2)))
-
-
-def f3(a1, a2, k):
-    return tf.exp(-k * (tf.pow(a1 - 1, 2) + tf.pow(a2 - 1, 2)))
 
 
 def attr_losses(attr_name, labels, logits):
@@ -300,7 +282,6 @@ def attr_losses(attr_name, labels, logits):
     """
     # the first num of logits is to determine whether the attribute is identifiable
 
-
     valid_inds_ = tf.where(labels >= -1)
     labels = tf.reshape(tf.gather(labels, valid_inds_), [-1])
     logits = tf.reshape(tf.gather(logits, valid_inds_), (-1, 2))
@@ -312,7 +293,6 @@ def attr_losses(attr_name, labels, logits):
         labels=tf.to_float(specific_labels), logits=specific_logits)
 
     specific_loss_sum = tf.reduce_sum(specific_loss) * 0.05
-
 
     # the second num of logits is to determine whether the attribute is positive or negative
     # only use the recognizable attribute to train the second num of logits
@@ -331,7 +311,6 @@ def attr_losses(attr_name, labels, logits):
     loss_sum = tf.add_n([attr_loss_sum, specific_loss_sum], name='{}_loss'.format(attr_name))
     prediction = convert2D(tf.gather(attribute_logits, attr_inds))
 
-
     with tf.name_scope('{}_metrics'.format(attr_name)), tf.device('/cpu:0'):
         predict_label = logits_to_predict(logits)
         # 0  1  2 means - + not sure
@@ -347,7 +326,6 @@ def attr_losses(attr_name, labels, logits):
     add_moving_summary(loss_sum, accuracy, average_precision)
 
     return loss_sum
-
 
 
 def attr_losses_v2(attr_name, labels, logits):
@@ -383,7 +361,6 @@ def attr_losses_v2(attr_name, labels, logits):
 def convert2D(logits):
     logits2D = tf.ones_like(logits) - logits
     return tf.concat([logits2D, logits], 1)
-
 
 
 @layer_register(log_shape=True)
@@ -629,13 +606,12 @@ class BoxProposals(object):
         return tf.gather(self.gt_boxes, self.fg_inds_wrt_gt)  #
 
 
-
 class FastRCNNHead(object):
     """
     A class to process & decode inputs/outputs of a fastrcnn classification+regression head.
     """
 
-    def __init__(self, proposals, box_logits, label_logits,  bbox_regression_weights):
+    def __init__(self, proposals, box_logits, label_logits, bbox_regression_weights):
         """
         Args:
             proposals: BoxProposals
@@ -658,6 +634,7 @@ class FastRCNNHead(object):
             anchors
         )
         return decoded_boxes  # pre_boxes_on_images
+
     @memoized
     def output_scores(self, name=None):
         """ Returns: N x #class scores, summed to one for each box."""
@@ -667,8 +644,6 @@ class FastRCNNHead(object):
     def fg_box_logits(self):
         """ Returns: #fg x ? x 4 """
         return tf.gather(self.box_logits, self.proposals.fg_inds(), name='fg_box_logits')
-
-
 
     @memoized
     def losses(self):
@@ -724,4 +699,3 @@ class FastRCNNHead(object):
     def predicted_labels(self):
         """ Returns: N ints """
         return tf.argmax(self.label_logits, axis=1, name='predicted_labels')
-

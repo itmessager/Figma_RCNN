@@ -201,7 +201,6 @@ class ResNetC4Model(DetectionModel):
             cor_cost = tf.identity(all_cor_cost(attrs_logits), 'cor_cost')
             all_losses = [attrs_losses, cor_cost]
 
-
             # rpn loss  = label_loss, box_loss
             all_losses.extend(rpn_losses(
                 anchors.gt_labels, anchors.encoded_gt_boxes(), rpn_label_logits, rpn_box_logits))
